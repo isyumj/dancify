@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, Text } from 'react-native';
 import { usePlayerStore } from '../store/playerStore';
 import { PlaybackSpeed } from '../types';
 
-const SPEEDS: PlaybackSpeed[] = [0.5, 0.7, 0.8, 0.9, 1.0];
+const SPEEDS: PlaybackSpeed[] = [0.7, 0.8, 0.9, 1.0];
 
 interface Props {
   currentTime: number;

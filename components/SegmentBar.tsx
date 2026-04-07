@@ -1,5 +1,11 @@
-import React, { useCallback } from 'react';
-import { View, StyleSheet, Pressable, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Text } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
+import { runOnJS } from 'react-native-worklets';
 import { Segment } from '../types';
 import { usePlayerStore } from '../store/playerStore';
 
@@ -12,68 +18,85 @@ interface Props {
 
 export function SegmentBar({ duration, currentTime, segments, onSeek }: Props) {
   const { loopStart, loopEnd } = usePlayerStore();
+  const trackWidth = useSharedValue(1);
+  const thumbX = useSharedValue(0);
+  const isDragging = useSharedValue(false);
 
-  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // Sync playhead with video when not dragging
+  useEffect(() => {
+    if (!isDragging.value && duration > 0) {
+      thumbX.value = (currentTime / duration) * trackWidth.value;
+    }
+  }, [currentTime, duration]);
+
+  const pan = Gesture.Pan()
+    .onBegin((e) => {
+      isDragging.value = true;
+      thumbX.value = Math.max(0, Math.min(trackWidth.value, e.x));
+    })
+    .onUpdate((e) => {
+      thumbX.value = Math.max(0, Math.min(trackWidth.value, e.x));
+    })
+    .onEnd((e) => {
+      const ratio = Math.max(0, Math.min(1, e.x / trackWidth.value));
+      isDragging.value = false;
+      runOnJS(onSeek)(ratio * duration);
+    })
+    .onFinalize(() => {
+      isDragging.value = false;
+    });
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    left: thumbX.value,
+  }));
+
   const loopStartPct = duration > 0 && loopStart !== null ? (loopStart / duration) * 100 : null;
   const loopEndPct = duration > 0 && loopEnd !== null ? (loopEnd / duration) * 100 : null;
 
-  const handlePress = useCallback(
-    (event: { nativeEvent: { locationX: number } }, width: number) => {
-      if (duration <= 0 || width <= 0) return;
-      const ratio = event.nativeEvent.locationX / width;
-      onSeek(ratio * duration);
-    },
-    [duration, onSeek]
-  );
-
   return (
     <View style={styles.container}>
-      {/* Track */}
-      <View
-        style={styles.track}
-        onStartShouldSetResponder={() => true}
-        onResponderGrant={(e) => {
-          // @ts-ignore – layout is available at runtime
-          const width = e.currentTarget?.offsetWidth ?? 300;
-          handlePress(e, width);
-        }}
-      >
-        {/* Loop region */}
-        {loopStartPct !== null && loopEndPct !== null && (
-          <View
-            style={[
-              styles.loopRegion,
-              { left: `${loopStartPct}%`, width: `${loopEndPct - loopStartPct}%` },
-            ]}
-          />
-        )}
-
-        {/* Playhead */}
-        <View style={[styles.playhead, { left: `${pct}%` }]} />
-
-        {/* Loop markers */}
-        {loopStartPct !== null && (
-          <View style={[styles.markerStart, { left: `${loopStartPct}%` }]}>
-            <Text style={styles.markerLabel}>A</Text>
-          </View>
-        )}
-        {loopEndPct !== null && (
-          <View style={[styles.markerEnd, { left: `${loopEndPct}%` }]}>
-            <Text style={styles.markerLabel}>B</Text>
-          </View>
-        )}
-
-        {/* Saved segment dots */}
-        {segments.map((seg) => {
-          const dotPct = duration > 0 ? (seg.startTime / duration) * 100 : 0;
-          return (
+      <GestureDetector gesture={pan}>
+        <View
+          style={styles.track}
+          onLayout={(e) => { trackWidth.value = e.nativeEvent.layout.width; }}
+        >
+          {/* Loop region */}
+          {loopStartPct !== null && loopEndPct !== null && (
             <View
-              key={seg.id}
-              style={[styles.segmentDot, { left: `${dotPct}%` }]}
+              style={[
+                styles.loopRegion,
+                { left: `${loopStartPct}%`, width: `${loopEndPct - loopStartPct}%` },
+              ]}
             />
-          );
-        })}
-      </View>
+          )}
+
+          {/* Playhead — runs on UI thread, zero lag */}
+          <Animated.View style={[styles.playhead, thumbStyle]} />
+
+          {/* Loop markers */}
+          {loopStartPct !== null && (
+            <View style={[styles.markerStart, { left: `${loopStartPct}%` }]}>
+              <Text style={styles.markerLabel}>A</Text>
+            </View>
+          )}
+          {loopEndPct !== null && (
+            <View style={[styles.markerEnd, { left: `${loopEndPct}%` }]}>
+              <Text style={styles.markerLabel}>B</Text>
+            </View>
+          )}
+
+          {/* Saved segment dots */}
+          {segments.map((seg) => {
+            const dotPct = duration > 0 ? (seg.startTime / duration) * 100 : 0;
+            return (
+              <View
+                key={seg.id}
+                style={[styles.segmentDot, { left: `${dotPct}%` }]}
+              />
+            );
+          })}
+        </View>
+      </GestureDetector>
     </View>
   );
 }

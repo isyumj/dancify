@@ -66,15 +66,21 @@ export function usePlayback(
     }
 
     const TICK_MS = 200;
+    let consecutiveAtEnd = 0;
 
-    const tick = () => {
+    const tick = async () => {
       if (!player) return;
       const current = player.currentTime ?? 0;
       if (current >= loopEnd!) {
-        restartLoop(loopStart!);
+        consecutiveAtEnd++;
+        if (consecutiveAtEnd >= 2) {
+          consecutiveAtEnd = 0;
+          await restartLoop(loopStart!);
+        }
       } else {
-        loopTimerRef.current = setTimeout(tick, TICK_MS);
+        consecutiveAtEnd = 0;
       }
+      loopTimerRef.current = setTimeout(tick, TICK_MS);
     };
 
     loopTimerRef.current = setTimeout(tick, TICK_MS);
@@ -89,17 +95,23 @@ export function usePlayback(
 
     const TICK_MS = 200;
     const END_THRESHOLD = 0.6; // seconds before end to trigger restart
+    let consecutiveNearEnd = 0;
 
     let timerId: ReturnType<typeof setTimeout> | null = null;
 
-    const tick = () => {
+    const tick = async () => {
       if (!player) return;
       const current = player.currentTime ?? 0;
       if (current >= duration - END_THRESHOLD) {
-        restartLoop(0);
+        consecutiveNearEnd++;
+        if (consecutiveNearEnd >= 2) {
+          consecutiveNearEnd = 0;
+          await restartLoop(0);
+        }
       } else {
-        timerId = setTimeout(tick, TICK_MS);
+        consecutiveNearEnd = 0;
       }
+      timerId = setTimeout(tick, TICK_MS);
     };
 
     timerId = setTimeout(tick, TICK_MS);

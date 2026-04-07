@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
+  Animated,
   View,
   StyleSheet,
   Text,
@@ -15,9 +16,8 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { getVideo, insertVideo, updateVideoDuration } from '../db/database';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Video } from '../types';
-import { usePlayerStore } from '../store/playerStore';
+import { usePlayerStore, loadPlayerSettings } from '../store/playerStore';
 import { usePlayback } from '../hooks/usePlayback';
-import { useCountdown } from '../hooks/useCountdown';
 import { useSegments } from '../hooks/useSegments';
 import { Ionicons } from '@expo/vector-icons';
 import { PlayerControls } from '../components/PlayerControls';
@@ -49,16 +49,20 @@ export default function PlayerScreen() {
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fsBarWidth, setFsBarWidth] = useState(1);
+  const fsBarWidthRef = useRef(1);
+  const fsDragging = useRef(false);
+  const fsFillAnim = useRef(new Animated.Value(0)).current;
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
   const isMirror = usePlayerStore((s) => s.isMirror);
   const loopStart = usePlayerStore((s) => s.loopStart);
   const loopEnd = usePlayerStore((s) => s.loopEnd);
-  const isCountdownEnabled = usePlayerStore((s) => s.isCountdownEnabled);
-  const { playCountdown } = useCountdown();
 
   const { segments, load: loadSegments, addSegment } = useSegments(confirmedId);
+
+  useEffect(() => {
+    loadPlayerSettings();
+  }, []);
 
   useEffect(() => {
     if (tempPath && filenameParam) {
@@ -86,7 +90,7 @@ export default function PlayerScreen() {
     }
   }, [videoId, tempPath, filenameParam, durationParam]);
 
-  const player = useVideoPlayer(video?.localPath ?? '', (p) => {
+  const player = useVideoPlayer(video?.localPath ?? null, (p) => {
     p.loop = false;
     p.play();
     setIsPlaying(true);
@@ -110,6 +114,13 @@ export default function PlayerScreen() {
 
   usePlayback(player, duration, setCountdownNum);
 
+  // Keep fullscreen fill in sync with video when not dragging
+  useEffect(() => {
+    if (!fsDragging.current && duration > 0) {
+      fsFillAnim.setValue(currentTime / duration);
+    }
+  }, [currentTime, duration, fsFillAnim]);
+
   const handleSeek = useCallback(
     (time: number) => {
       if (!player) return;
@@ -119,25 +130,18 @@ export default function PlayerScreen() {
   );
 
   const handleFsSeek = useCallback(
-    (x: number) => {
+    (ratio: number) => {
       if (!player || duration === 0) return;
-      const ratio = Math.max(0, Math.min(1, x / fsBarWidth));
       player.seekBy(ratio * duration - (player.currentTime ?? 0));
     },
-    [player, duration, fsBarWidth]
+    [player, duration]
   );
 
-  const togglePlay = async () => {
+  const togglePlay = () => {
     if (!player) return;
     if (player.playing) {
       player.pause();
     } else {
-      if (isCountdownEnabled && loopStart === null) {
-        player.pause();
-        player.volume = 0;
-        await playCountdown(setCountdownNum);
-        player.volume = 1;
-      }
       player.play();
     }
   };
@@ -165,11 +169,9 @@ export default function PlayerScreen() {
     router.back();
   };
 
-  const progress = duration > 0 ? currentTime / duration : 0;
-
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
       {/* 自定义顶部栏 */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
@@ -183,11 +185,15 @@ export default function PlayerScreen() {
       {/* 视频 */}
       <View style={styles.videoWrapper}>
         {video ? (
+          // Keep VideoView always mounted to avoid iOS audio session interruption
+          // when the native AVPlayerLayer is destroyed. Use opacity:0 + pointerEvents
+          // to hide it while the fullscreen Modal is shown instead of unmounting it.
           <VideoView
             player={player}
-            style={[styles.video, isMirror && styles.mirrored]}
+            style={[styles.video, isMirror && styles.mirrored, isFullscreen && styles.hidden]}
             nativeControls={false}
             contentFit="contain"
+            pointerEvents={isFullscreen ? 'none' : 'auto'}
           />
         ) : (
           <View style={styles.videoPlaceholder}>
@@ -245,6 +251,12 @@ export default function PlayerScreen() {
             />
           )}
 
+          {countdownNum !== null && (
+            <View style={styles.countdownOverlay}>
+              <Text style={styles.countdownText}>{countdownNum}</Text>
+            </View>
+          )}
+
           {/* 全屏底部控制栏 */}
           <View style={[styles.fsControls, { paddingBottom: insets.bottom + 12 }]}>
             <Pressable onPress={togglePlay} style={styles.fsPlayBtn}>
@@ -255,14 +267,40 @@ export default function PlayerScreen() {
 
             {/* 进度条 */}
             <View
-              style={styles.fsProgressTrack}
-              onLayout={(e) => setFsBarWidth(e.nativeEvent.layout.width)}
+              style={styles.fsProgressTouchArea}
+              onLayout={(e) => { fsBarWidthRef.current = e.nativeEvent.layout.width; }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(e) => {
+                fsDragging.current = true;
+                const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / fsBarWidthRef.current));
+                fsFillAnim.setValue(ratio);
+              }}
+              onResponderMove={(e) => {
+                const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / fsBarWidthRef.current));
+                fsFillAnim.setValue(ratio);
+              }}
+              onResponderRelease={(e) => {
+                const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / fsBarWidthRef.current));
+                fsDragging.current = false;
+                handleFsSeek(ratio);
+              }}
+              onResponderTerminate={() => { fsDragging.current = false; }}
+              onResponderTerminationRequest={() => false}
             >
-              <View style={[styles.fsProgressFill, { width: `${progress * 100}%` }]} />
-              <Pressable
-                style={StyleSheet.absoluteFill}
-                onPress={(e) => handleFsSeek(e.nativeEvent.locationX)}
-              />
+              <View style={styles.fsProgressTrack}>
+                <Animated.View
+                  style={[
+                    styles.fsProgressFill,
+                    {
+                      width: fsFillAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                      }),
+                    },
+                  ]}
+                />
+              </View>
             </View>
 
             <Text style={styles.fsTime}>{fmt(duration)}</Text>
@@ -305,6 +343,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   video: { width: '100%', height: '100%' },
+  hidden: { opacity: 0 },
   mirrored: { transform: [{ scaleX: -1 }] },
   videoPlaceholder: {
     flex: 1,
@@ -384,8 +423,12 @@ const styles = StyleSheet.create({
     minWidth: 38,
     textAlign: 'center',
   },
-  fsProgressTrack: {
+  fsProgressTouchArea: {
     flex: 1,
+    height: 44,
+    justifyContent: 'center',
+  },
+  fsProgressTrack: {
     height: 3,
     backgroundColor: 'rgba(255,255,255,0.3)',
     borderRadius: 2,

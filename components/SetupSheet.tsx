@@ -10,7 +10,7 @@ import {
 import { usePlayerStore } from '../store/playerStore';
 import { PlaybackSpeed } from '../types';
 
-const SPEEDS: PlaybackSpeed[] = [0.5, 0.7, 0.8, 0.9, 1.0];
+const SPEEDS: PlaybackSpeed[] = [0.7, 0.8, 0.9, 1.0];
 
 interface Props {
   visible: boolean;
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function SetupSheet({ visible, onDone, onCancel }: Props) {
-  const { speed, setSpeed, isMirror, toggleMirror } = usePlayerStore();
+  const { speed, setSpeed, isMirror, toggleMirror, isCountdownEnabled, toggleCountdown } = usePlayerStore();
 
   return (
     <Modal
@@ -48,6 +48,17 @@ export function SetupSheet({ visible, onDone, onCancel }: Props) {
             <Switch
               value={isMirror}
               onValueChange={toggleMirror}
+              trackColor={{ false: '#333', true: '#2563eb' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          {/* Countdown */}
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>开头倒计时</Text>
+            <Switch
+              value={isCountdownEnabled}
+              onValueChange={toggleCountdown}
               trackColor={{ false: '#333', true: '#2563eb' }}
               thumbColor="#fff"
             />

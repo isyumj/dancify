@@ -31,6 +31,11 @@ export async function initDb(): Promise<void> {
       createdAt TEXT NOT NULL,
       FOREIGN KEY (videoId) REFERENCES videos(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
   // Migration: add thumbnailPath column if it doesn't exist yet
   try {
@@ -114,6 +119,22 @@ export async function deleteSegment(id: number): Promise<void> {
 export async function renameVideo(id: number, newFilename: string): Promise<void> {
   const database = await getDb();
   await database.runAsync('UPDATE videos SET filename = ? WHERE id = ?', newFilename.trim(), id);
+}
+
+// Settings
+export async function getSetting(key: string): Promise<string | null> {
+  const database = await getDb();
+  const row = await database.getFirstAsync<{ value: string }>(
+    'SELECT value FROM settings WHERE key = ?', key
+  );
+  return row?.value ?? null;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  const database = await getDb();
+  await database.runAsync(
+    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', key, value
+  );
 }
 
 export async function updateVideoDuration(
