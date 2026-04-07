@@ -10,16 +10,17 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: '#0a0a0a' },
-        headerTintColor: '#fff',
-        contentStyle: { backgroundColor: '#0a0a0a' },
-      }}
-    >
-      <Stack.Screen name="index" options={{ title: 'Dancify' }} />
-      <Stack.Screen name="player" options={{ title: '播放器', headerBackTitle: '返回' }} />
-    </Stack>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: '#0a0a0a' },
+          headerTintColor: '#fff',
+          contentStyle: { backgroundColor: '#0a0a0a' },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="player" options={{ headerShown: false }} />
+        <Stack.Screen name="language-modal" options={{ headerShown: false }} />
+      </Stack>
     </GestureHandlerRootView>
   );
 }

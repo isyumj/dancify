@@ -47,10 +47,16 @@ export function usePlayback(
     player.pause();
     // Seek to target immediately so ticks fired during countdown see the new position
     player.seekBy(seekTarget - (player.currentTime ?? 0));
+    // Re-pause after seekBy: on iOS, AVPlayer can auto-resume after a seek.
+    player.pause();
 
     if (isCountdownEnabled) {
       player.volume = 0;
       await playCountdown(onCountdownTick);
+      // Re-pause after countdown: on iOS, setAudioModeAsync (called inside
+      // playCountdown to reactivate the audio session) can trigger AVPlayer to
+      // auto-resume if it was previously interrupted by the fullscreen Modal.
+      player.pause();
       player.volume = 1;
     }
 

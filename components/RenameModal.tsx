@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ interface Props {
 
 export function RenameModal({ visible, currentName, onConfirm, onCancel }: Props) {
   const [value, setValue] = useState(currentName);
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (visible) setValue(currentName);
@@ -48,11 +49,12 @@ export function RenameModal({ visible, currentName, onConfirm, onCancel }: Props
           </View>
 
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={value}
             onChangeText={setValue}
             autoFocus
-            selectTextOnFocus
+            onFocus={() => setTimeout(() => inputRef.current?.setSelection(0, value.length), 0)}
             placeholderTextColor="#555"
             returnKeyType="done"
             onSubmitEditing={() => trimmed && onConfirm(trimmed)}

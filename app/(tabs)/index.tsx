@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useFocusEffect, Stack } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
@@ -15,13 +15,13 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
-import { getAllVideos, deleteVideo, renameVideo } from '../db/database';
+import { getAllVideos, deleteVideo, renameVideo } from '../../db/database';
 import { Feather } from '@expo/vector-icons';
-import { Video } from '../types';
-import { usePlayerStore } from '../store/playerStore';
-import { VideoActionSheet } from '../components/VideoActionSheet';
-import { RenameModal } from '../components/RenameModal';
-import { BulkActionBar } from '../components/BulkActionBar';
+import { Video } from '../../types';
+import { usePlayerStore } from '../../store/playerStore';
+import { VideoActionSheet } from '../../components/VideoActionSheet';
+import { RenameModal } from '../../components/RenameModal';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 const COLUMNS = 2;
 const GAP = 12;
@@ -62,7 +62,7 @@ function VideoGridItem({
           <Text style={styles.thumbPlaceholderIcon}>▶</Text>
         </View>
         <View style={styles.durationBadge}>
-          <Text style={styles.durationText}>✂ {formatDuration(item.duration)}</Text>
+          <Text style={styles.durationText}>{formatDuration(item.duration)}</Text>
         </View>
         {isSelecting && isSelected && (
           <View style={styles.selectedOverlay} />
@@ -224,8 +224,6 @@ export default function LibraryScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-
       {/* 自定义顶部栏 */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerSide} />
@@ -301,7 +299,6 @@ export default function LibraryScreen() {
           <Text style={styles.loadingText}>导入中…</Text>
         </View>
       )}
-
 
       <VideoActionSheet
         video={actionVideo}
@@ -390,7 +387,7 @@ const styles = StyleSheet.create({
   durationText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(37, 99, 235, 0.35)',
+    backgroundColor: 'rgba(33, 107, 255, 0.35)',
   },
   checkCircle: {
     position: 'absolute',
@@ -406,8 +403,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   checkCircleSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#216BFF',
+    borderColor: '#216BFF',
   },
   cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardTitle: { flex: 1, color: '#ccc', fontSize: 12, lineHeight: 16 },
@@ -434,7 +431,7 @@ const styles = StyleSheet.create({
   importLabel: { color: '#555', fontSize: 14, marginTop: 8 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING, paddingTop: 16, paddingBottom: 8 },
   selectingActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  selectAllText: { color: '#2563eb', fontSize: 14, fontWeight: '500', paddingHorizontal: 8, paddingVertical: 8 },
+  selectAllText: { color: '#216BFF', fontSize: 14, fontWeight: '500', paddingHorizontal: 8, paddingVertical: 8 },
   sectionTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

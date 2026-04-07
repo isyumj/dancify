@@ -7,6 +7,7 @@ import {
   Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   visible: boolean;
@@ -24,6 +25,7 @@ export function BulkActionBar({
   onDelete,
 }: Props) {
   const slideAnim = useRef(new Animated.Value(100)).current;
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     Animated.spring(slideAnim, {
@@ -39,7 +41,7 @@ export function BulkActionBar({
 
   return (
     <Animated.View
-      style={[styles.container, { transform: [{ translateY: slideAnim }] }]}
+      style={[styles.container, { transform: [{ translateY: slideAnim }], paddingBottom: insets.bottom || 16 }]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
       <View style={styles.bar}>
@@ -71,7 +73,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderTopWidth: 1,
     borderTopColor: '#2a2a2a',
-    paddingBottom: 36,
   },
   bar: {
     flexDirection: 'row',

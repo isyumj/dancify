@@ -13,6 +13,7 @@ import {
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { getVideo, insertVideo, updateVideoDuration } from '../db/database';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Video } from '../types';
@@ -49,10 +50,19 @@ export default function PlayerScreen() {
   const fsBarWidthRef = useRef(1);
   const fsDragging = useRef(false);
   const fsFillAnim = useRef(new Animated.Value(0)).current;
+  const smBarWidthRef = useRef(1);
+  const smDragging = useRef(false);
+  const smFillAnim = useRef(new Animated.Value(0)).current;
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
   const isMirror = usePlayerStore((s) => s.isMirror);
   const setCurrentVideoId = usePlayerStore((s) => s.setCurrentVideoId);
+
+  // Double-tap seek (fullscreen)
+  const lastTapTimeRef = useRef<number>(0);
+  const fsTapWidthRef = useRef<number>(1);
+  const seekIndicatorOpacity = useRef(new Animated.Value(0)).current;
+  const [seekFeedback, setSeekFeedback] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => {
     if (tempPath && filenameParam) {
@@ -104,12 +114,24 @@ export default function PlayerScreen() {
 
   usePlayback(player, duration, setCountdownNum);
 
-  // Keep fullscreen fill in sync with video when not dragging
+  // Keep screen awake while playing; restore auto-lock when paused or unmounted
   useEffect(() => {
-    if (!fsDragging.current && duration > 0) {
-      fsFillAnim.setValue(currentTime / duration);
+    if (isPlaying) {
+      activateKeepAwakeAsync();
+    } else {
+      deactivateKeepAwake();
     }
-  }, [currentTime, duration, fsFillAnim]);
+    return () => { deactivateKeepAwake(); };
+  }, [isPlaying]);
+
+  // Keep progress fills in sync with video when not dragging
+  useEffect(() => {
+    if (duration > 0) {
+      const ratio = currentTime / duration;
+      if (!fsDragging.current) fsFillAnim.setValue(ratio);
+      if (!smDragging.current) smFillAnim.setValue(ratio);
+    }
+  }, [currentTime, duration, fsFillAnim, smFillAnim]);
 
   const handleSeek = useCallback(
     (time: number) => {
@@ -146,6 +168,24 @@ export default function PlayerScreen() {
     setSetupVisible(false);
   };
 
+  const handleFsDoubleTap = useCallback((locationX: number) => {
+    const now = Date.now();
+    if (now - lastTapTimeRef.current < 300) {
+      const isLeft = locationX < fsTapWidthRef.current / 2;
+      player?.seekBy(isLeft ? -5 : 5);
+      setSeekFeedback(isLeft ? 'left' : 'right');
+      seekIndicatorOpacity.setValue(1);
+      Animated.timing(seekIndicatorOpacity, {
+        toValue: 0,
+        duration: 700,
+        useNativeDriver: true,
+      }).start();
+      lastTapTimeRef.current = 0;
+    } else {
+      lastTapTimeRef.current = now;
+    }
+  }, [player, seekIndicatorOpacity]);
+
   const handleSetupCancel = async () => {
     if (tempPath) {
       try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch {}
@@ -162,7 +202,9 @@ export default function PlayerScreen() {
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>播放器</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {video ? video.filename.replace(/\.[^.]+$/, '') : '播放器'}
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -202,6 +244,57 @@ export default function PlayerScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* 小屏进度条 */}
+      <View
+        style={styles.smProgressTouchArea}
+        onLayout={(e) => { smBarWidthRef.current = e.nativeEvent.layout.width; }}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={(e) => {
+          smDragging.current = true;
+          const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / smBarWidthRef.current));
+          smFillAnim.setValue(ratio);
+        }}
+        onResponderMove={(e) => {
+          const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / smBarWidthRef.current));
+          smFillAnim.setValue(ratio);
+        }}
+        onResponderRelease={(e) => {
+          const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / smBarWidthRef.current));
+          smDragging.current = false;
+          if (player && duration > 0) {
+            player.seekBy(ratio * duration - (player.currentTime ?? 0));
+          }
+        }}
+        onResponderTerminate={() => { smDragging.current = false; }}
+        onResponderTerminationRequest={() => false}
+      >
+        <View style={styles.smProgressTrack}>
+          <Animated.View
+            style={[
+              styles.smProgressFill,
+              {
+                width: smFillAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.smProgressThumb,
+              {
+                left: smFillAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+          />
+        </View>
+      </View>
+
       <PlayerControls />
 
       <SetupSheet
@@ -226,6 +319,33 @@ export default function PlayerScreen() {
               nativeControls={false}
               contentFit="contain"
             />
+          )}
+
+          {/* 双击快退/快进手势层 */}
+          <Pressable
+            style={styles.fsTapOverlay}
+            onLayout={(e) => { fsTapWidthRef.current = e.nativeEvent.layout.width; }}
+            onPress={(e) => handleFsDoubleTap(e.nativeEvent.locationX)}
+          />
+
+          {/* 双击 seek 提示 */}
+          {seekFeedback && (
+            <Animated.View
+              style={[
+                styles.fsSeekIndicator,
+                seekFeedback === 'left' ? styles.fsSeekLeft : styles.fsSeekRight,
+                { opacity: seekIndicatorOpacity },
+              ]}
+            >
+              <Ionicons
+                name={seekFeedback === 'left' ? 'play-back' : 'play-forward'}
+                size={26}
+                color="#fff"
+              />
+              <Text style={styles.fsSeekText}>
+                {seekFeedback === 'left' ? '-5秒' : '+5秒'}
+              </Text>
+            </Animated.View>
           )}
 
           {countdownNum !== null && (
@@ -415,5 +535,58 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#fff',
     borderRadius: 2,
+  },
+
+  // 小屏进度条
+  smProgressTouchArea: {
+    height: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  smProgressTrack: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
+    overflow: 'visible',
+  },
+  smProgressFill: {
+    height: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 2,
+  },
+  smProgressThumb: {
+    position: 'absolute',
+    top: '50%',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#fff',
+    marginTop: -7,
+    marginLeft: -7,
+  },
+
+  fsTapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  fsSeekIndicator: {
+    position: 'absolute',
+    top: '40%',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 40,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  fsSeekLeft: { left: '10%' },
+  fsSeekRight: { right: '10%' },
+  fsSeekText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
