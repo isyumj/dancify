@@ -1,12 +1,11 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { initDb } from '../db/database';
-import { loadPlayerSettings } from '../store/playerStore';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
   useEffect(() => {
-    initDb().then(() => loadPlayerSettings()).catch(console.error);
+    initDb().catch(console.error);
   }, []);
 
   return (

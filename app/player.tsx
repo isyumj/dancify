@@ -16,12 +16,10 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { getVideo, insertVideo, updateVideoDuration } from '../db/database';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Video } from '../types';
-import { usePlayerStore, loadPlayerSettings } from '../store/playerStore';
+import { usePlayerStore, loadVideoSettings, saveVideoSettings } from '../store/playerStore';
 import { usePlayback } from '../hooks/usePlayback';
-import { useSegments } from '../hooks/useSegments';
 import { Ionicons } from '@expo/vector-icons';
 import { PlayerControls } from '../components/PlayerControls';
-import { SegmentBar } from '../components/SegmentBar';
 import { SetupSheet } from '../components/SetupSheet';
 
 function fmt(seconds: number): string {
@@ -43,7 +41,6 @@ export default function PlayerScreen() {
   const insets = useSafeAreaInsets();
 
   const [video, setVideo] = useState<Video | null>(null);
-  const [confirmedId, setConfirmedId] = useState(0);
   const [setupVisible, setSetupVisible] = useState(isNewImport);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -55,14 +52,7 @@ export default function PlayerScreen() {
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
   const isMirror = usePlayerStore((s) => s.isMirror);
-  const loopStart = usePlayerStore((s) => s.loopStart);
-  const loopEnd = usePlayerStore((s) => s.loopEnd);
-
-  const { segments, load: loadSegments, addSegment } = useSegments(confirmedId);
-
-  useEffect(() => {
-    loadPlayerSettings();
-  }, []);
+  const setCurrentVideoId = usePlayerStore((s) => s.setCurrentVideoId);
 
   useEffect(() => {
     if (tempPath && filenameParam) {
@@ -83,10 +73,10 @@ export default function PlayerScreen() {
           return;
         }
         setVideo(v);
-        setConfirmedId(vidId);
         if (v.duration > 0) setDuration(v.duration);
+        setCurrentVideoId(v.id);
+        loadVideoSettings(v.id);
       });
-      loadSegments();
     }
   }, [videoId, tempPath, filenameParam, durationParam]);
 
@@ -146,18 +136,12 @@ export default function PlayerScreen() {
     }
   };
 
-  const handleSaveSegment = async () => {
-    if (loopStart === null || loopEnd === null) return;
-    await addSegment(loopStart, loopEnd);
-    Alert.alert('已保存', `${fmt(loopStart)} → ${fmt(loopEnd)}`);
-  };
-
   const handleSetupDone = async () => {
     if (isNewImport && video && video.id === 0) {
       const id = await insertVideo(video.filename, duration || video.duration, video.localPath);
       setVideo({ ...video, id });
-      setConfirmedId(id);
-      loadSegments();
+      setCurrentVideoId(id);
+      await saveVideoSettings(id);
     }
     setSetupVisible(false);
   };
@@ -218,14 +202,7 @@ export default function PlayerScreen() {
         </TouchableOpacity>
       </View>
 
-      <SegmentBar
-        duration={duration}
-        currentTime={currentTime}
-        segments={segments}
-        onSeek={handleSeek}
-      />
-
-      <PlayerControls currentTime={currentTime} onSaveSegment={handleSaveSegment} />
+      <PlayerControls />
 
       <SetupSheet
         visible={setupVisible}

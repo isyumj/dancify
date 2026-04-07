@@ -5,36 +5,12 @@ import { PlaybackSpeed } from '../types';
 
 const SPEEDS: PlaybackSpeed[] = [0.7, 0.8, 0.9, 1.0];
 
-interface Props {
-  currentTime: number;
-  onSaveSegment: () => void;
-}
-
-export function PlayerControls({ currentTime, onSaveSegment }: Props) {
+export function PlayerControls() {
   const {
     speed, setSpeed,
     isMirror, toggleMirror,
-    loopStart, loopEnd,
-    setLoopStart, setLoopEnd, clearLoop,
     isCountdownEnabled, toggleCountdown,
   } = usePlayerStore();
-
-  const handleABPress = () => {
-    if (loopStart === null) {
-      setLoopStart(currentTime);
-    } else if (loopEnd === null) {
-      if (currentTime > loopStart) {
-        setLoopEnd(currentTime);
-      } else {
-        // Tapped before A — reset A
-        setLoopStart(currentTime);
-      }
-    } else {
-      clearLoop();
-    }
-  };
-
-  const abLabel = loopStart === null ? '打 A 点' : loopEnd === null ? '打 B 点' : '清除 A-B';
 
   return (
     <View style={styles.container}>
@@ -75,19 +51,6 @@ export function PlayerControls({ currentTime, onSaveSegment }: Props) {
             倒计时
           </Text>
         </Pressable>
-      </View>
-
-      {/* A-B loop + Save row */}
-      <View style={styles.row}>
-        <Pressable style={styles.actionBtn} onPress={handleABPress}>
-          <Text style={styles.actionText}>{abLabel}</Text>
-        </Pressable>
-
-        {loopStart !== null && loopEnd !== null && (
-          <Pressable style={[styles.actionBtn, styles.saveBtn]} onPress={onSaveSegment}>
-            <Text style={styles.actionText}>保存片段</Text>
-          </Pressable>
-        )}
       </View>
     </View>
   );
@@ -150,22 +113,5 @@ const styles = StyleSheet.create({
   },
   toggleTextActive: {
     color: '#63b3ed',
-  },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#1e1e1e',
-    alignItems: 'center',
-  },
-  saveBtn: {
-    backgroundColor: 'rgba(245,158,11,0.15)',
-    borderWidth: 1,
-    borderColor: '#f59e0b',
-  },
-  actionText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

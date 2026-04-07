@@ -227,22 +227,10 @@ export default function LibraryScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* 自定义顶部栏 */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.headerSide}>
-          {isSelecting && (
-            <TouchableOpacity onPress={handleCancelSelect} activeOpacity={0.7} style={styles.manageBtn}>
-              <Text style={styles.manageBtnText}>取消</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.headerSide} />
         <Text style={styles.headerTitle}>Dancify</Text>
-        <View style={[styles.headerSide, { alignItems: 'flex-end' }]}>
-          {!isSelecting && videos.length > 0 && (
-            <TouchableOpacity onPress={() => setIsSelecting(true)} activeOpacity={0.7} style={styles.manageBtn}>
-              <Text style={styles.manageBtnText}>管理</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <View style={[styles.headerSide, { alignItems: 'flex-end' }]} />
       </View>
 
       <FlatList
@@ -254,10 +242,45 @@ export default function LibraryScreen() {
           videos.length === 0 ? styles.emptyContainer : styles.grid,
           isSelecting && styles.gridWithBar,
         ]}
+        ListHeaderComponent={
+          <View>
+            <Pressable
+              style={styles.importBanner}
+              onPress={handleImport}
+              disabled={loading || isSelecting}
+            >
+              <View style={styles.importBox}>
+                <Text style={styles.importPlus}>＋</Text>
+                <Text style={styles.importLabel}>导入视频开始练习</Text>
+              </View>
+            </Pressable>
+            {videos.length > 0 && (
+              <View style={styles.sectionTitleRow}>
+                <Text style={styles.sectionTitle}>我的视频</Text>
+                {isSelecting ? (
+                  <View style={styles.selectingActions}>
+                    <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7}>
+                      <Text style={styles.selectAllText}>
+                        {selectedIds.size === videos.length ? '取消全选' : '全选'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleCancelSelect} activeOpacity={0.7} style={styles.manageBtn}>
+                      <Text style={styles.manageBtnText}>取消</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => setIsSelecting(true)} activeOpacity={0.7} style={styles.manageBtn}>
+                    <Text style={styles.manageBtnText}>管理</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>还没有视频</Text>
-            <Text style={styles.emptySubtext}>点击右下角导入视频开始练习</Text>
+            <Text style={styles.emptySubtext}>导入一个视频开始练习吧</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -279,11 +302,6 @@ export default function LibraryScreen() {
         </View>
       )}
 
-      {!isSelecting && (
-        <Pressable style={styles.fab} onPress={handleImport} disabled={loading}>
-          <Text style={styles.fabText}>＋</Text>
-        </Pressable>
-      )}
 
       <VideoActionSheet
         video={actionVideo}
@@ -312,7 +330,7 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  grid: { padding: PADDING, gap: GAP },
+  grid: { paddingHorizontal: PADDING, paddingVertical: 12, gap: GAP },
   gridWithBar: { paddingBottom: 100 },
   row: { gap: GAP },
   emptyContainer: { flex: 1 },
@@ -395,23 +413,29 @@ const styles = StyleSheet.create({
   cardTitle: { flex: 1, color: '#ccc', fontSize: 12, lineHeight: 16 },
   moreBtn: { padding: 2 },
 
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 36,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2563eb',
+  importBanner: {
+    paddingHorizontal: PADDING,
+    paddingTop: 12,
+    paddingBottom: 12,
+    alignItems: 'center',
+  },
+  importBox: {
+    width: SCREEN_WIDTH - PADDING * 2,
+    height: 140,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#333',
+    borderStyle: 'dashed',
+    backgroundColor: '#141414',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
   },
-  fabText: { color: '#fff', fontSize: 28, lineHeight: 32 },
+  importPlus: { color: '#555', fontSize: 48, lineHeight: 56 },
+  importLabel: { color: '#555', fontSize: 14, marginTop: 8 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING, paddingTop: 16, paddingBottom: 8 },
+  selectingActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  selectAllText: { color: '#2563eb', fontSize: 14, fontWeight: '500', paddingHorizontal: 8, paddingVertical: 8 },
+  sectionTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',

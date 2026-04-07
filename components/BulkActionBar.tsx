@@ -48,12 +48,6 @@ export function BulkActionBar({
         </Text>
 
         <View style={styles.actions}>
-          <Pressable onPress={onSelectAll} hitSlop={8} style={styles.sideBtn}>
-            <Text style={styles.selectAllText}>
-              {allSelected ? '取消全选' : '全选'}
-            </Text>
-          </Pressable>
-
           <Pressable
             onPress={onDelete}
             disabled={!canDelete}
