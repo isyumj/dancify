@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Pressable, Text } from 'react-native';
 import { usePlayerStore } from '../store/playerStore';
 import { PlaybackSpeed } from '../types';
+import { Colors } from '../constants/theme';
 
 const SPEEDS: PlaybackSpeed[] = [0.7, 0.8, 0.9, 1.0];
 
@@ -15,41 +16,34 @@ export function PlayerControls() {
   return (
     <View style={styles.container}>
       {/* Speed row */}
-      <View style={styles.row}>
-        <Text style={styles.label}>速度</Text>
-        <View style={styles.segmented}>
-          {SPEEDS.map((s) => (
-            <Pressable
-              key={s}
-              style={[styles.pill, speed === s && styles.pillActive]}
-              onPress={() => setSpeed(s)}
-            >
-              <Text style={[styles.pillText, speed === s && styles.pillTextActive]}>
-                {s === 1.0 ? '1x' : `${s}x`}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <View style={styles.segmented}>
+        {SPEEDS.map((s) => (
+          <Pressable
+            key={s}
+            style={[styles.pill, speed === s && styles.pillActiveSpeed]}
+            onPress={() => setSpeed(s)}
+          >
+            <Text style={[styles.pillText, speed === s && styles.pillTextActiveSpeed]}>
+              {s === 1.0 ? '1x' : `${s}x`}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
       {/* Mirror + Countdown row */}
-      <View style={styles.row}>
+      <View style={styles.segmented}>
         <Pressable
-          style={[styles.toggleBtn, isMirror && styles.toggleBtnActive]}
+          style={[styles.pill, isMirror && styles.pillActiveSpeed]}
           onPress={toggleMirror}
         >
-          <Text style={[styles.toggleText, isMirror && styles.toggleTextActive]}>
-            镜像
-          </Text>
+          <Text style={[styles.pillText, isMirror && styles.pillTextActiveSpeed]}>镜像</Text>
         </Pressable>
 
         <Pressable
-          style={[styles.toggleBtn, isCountdownEnabled && styles.toggleBtnActive]}
+          style={[styles.pill, isCountdownEnabled && styles.pillActiveSpeed]}
           onPress={toggleCountdown}
         >
-          <Text style={[styles.toggleText, isCountdownEnabled && styles.toggleTextActive]}>
-            倒计时
-          </Text>
+          <Text style={[styles.pillText, isCountdownEnabled && styles.pillTextActiveSpeed]}>倒计时</Text>
         </Pressable>
       </View>
     </View>
@@ -62,56 +56,30 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  label: {
-    color: '#aaa',
-    fontSize: 13,
-    width: 32,
-  },
   segmented: {
     flexDirection: 'row',
-    backgroundColor: '#1e1e1e',
+    backgroundColor: Colors.bgCard,
     borderRadius: 8,
     padding: 3,
     gap: 3,
   },
   pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
     borderRadius: 6,
+    backgroundColor: 'transparent',
   },
-  pillActive: {
-    backgroundColor: '#2563eb',
+  pillActiveSpeed: {
+    backgroundColor: Colors.brandPrimary,
   },
   pillText: {
-    color: '#888',
+    color: Colors.textSecondary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  pillTextActive: {
+  pillTextActiveSpeed: {
     color: '#fff',
-  },
-  toggleBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  toggleBtnActive: {
-    borderColor: '#2563eb',
-    backgroundColor: 'rgba(37,99,235,0.15)',
-  },
-  toggleText: {
-    color: '#888',
-    fontSize: 14,
     fontWeight: '600',
-  },
-  toggleTextActive: {
-    color: '#63b3ed',
   },
 });

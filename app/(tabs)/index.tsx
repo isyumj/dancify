@@ -12,10 +12,12 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
-import { getAllVideos, deleteVideo, renameVideo } from '../../db/database';
+import { getAllVideos, deleteVideo, renameVideo, getFilenamesByPrefix } from '../../db/database';
+import { Colors } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
 import { Video } from '../../types';
 import { usePlayerStore } from '../../store/playerStore';
@@ -118,7 +120,21 @@ export default function LibraryScreen() {
     setLoading(true);
     try {
       const asset = result.assets[0];
-      const filename = asset.uri.split('/').pop() ?? `video_${Date.now()}.mp4`;
+      const originalFilename = asset.uri.split('/').pop() ?? `video_${Date.now()}.mp4`;
+      const ext = originalFilename.match(/\.[^.]+$/)?.[0] ?? '.mp4';
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const baseDisplayName = `视频${dateStr}`;
+      const existingNames = new Set(
+        (await getFilenamesByPrefix(baseDisplayName)).map((n) => n.replace(/\.[^.]+$/, ''))
+      );
+      let displayName = baseDisplayName;
+      if (existingNames.has(displayName)) {
+        let i = 1;
+        while (existingNames.has(`${baseDisplayName} (${i})`)) i++;
+        displayName = `${baseDisplayName} (${i})`;
+      }
+      const filename = displayName + ext;
       const destDir = FileSystem.documentDirectory + 'videos/';
       await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
       const destPath = destDir + filename;
@@ -247,14 +263,21 @@ export default function LibraryScreen() {
               onPress={handleImport}
               disabled={loading || isSelecting}
             >
-              <View style={styles.importBox}>
-                <Text style={styles.importPlus}>＋</Text>
+              <LinearGradient
+                colors={['#4A4A4E', '#2E2E32']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.importBox}
+              >
+                <View style={styles.importIconWrapper}>
+                  <Text style={styles.importPlus}>＋</Text>
+                </View>
                 <Text style={styles.importLabel}>导入视频开始练习</Text>
-              </View>
+              </LinearGradient>
             </Pressable>
             {videos.length > 0 && (
               <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>我的视频</Text>
+                <Text style={styles.sectionTitle}>我的练舞视频</Text>
                 {isSelecting ? (
                   <View style={styles.selectingActions}>
                     <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7}>
@@ -295,7 +318,7 @@ export default function LibraryScreen() {
 
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={Colors.brandPrimary} />
           <Text style={styles.loadingText}>导入中…</Text>
         </View>
       )}
@@ -326,18 +349,18 @@ export default function LibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  container: { flex: 1, backgroundColor: Colors.bgMain },
   grid: { paddingHorizontal: PADDING, paddingVertical: 12, gap: GAP },
   gridWithBar: { paddingBottom: 100 },
   row: { gap: GAP },
   emptyContainer: { flex: 1 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8 },
-  emptyText: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  emptySubtext: { color: '#666', fontSize: 14 },
+  emptyText: { color: Colors.textPrimary, fontSize: 17, fontWeight: '600' },
+  emptySubtext: { color: Colors.textSecondary, fontSize: 14 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+    backgroundColor: Colors.bgMain,
     paddingHorizontal: 16,
     paddingBottom: 10,
   },
@@ -348,7 +371,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    color: '#fff',
+    color: Colors.textPrimary,
     fontSize: 17,
     fontWeight: '700',
   },
@@ -356,9 +379,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.bgCard,
   },
-  manageBtnText: { color: '#fff', fontSize: 14, fontWeight: '500' },
+  manageBtnText: { color: Colors.textPrimary, fontSize: 14, fontWeight: '500' },
 
   card: { width: CARD_WIDTH, gap: 6 },
   thumbContainer: {
@@ -366,13 +389,13 @@ const styles = StyleSheet.create({
     height: CARD_WIDTH,
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.bgCard,
   },
   thumbPlaceholder: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1e1e1e',
+    backgroundColor: Colors.bgCard,
   },
   thumbPlaceholderIcon: { fontSize: 28, color: '#444' },
   durationBadge: {
@@ -384,10 +407,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  durationText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  durationText: { color: Colors.textPrimary, fontSize: 11, fontWeight: '600' },
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(33, 107, 255, 0.35)',
+    backgroundColor: 'rgba(145, 99, 243, 0.35)',
   },
   checkCircle: {
     position: 'absolute',
@@ -403,8 +426,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   checkCircleSelected: {
-    backgroundColor: '#216BFF',
-    borderColor: '#216BFF',
+    backgroundColor: Colors.brandPrimary,
+    borderColor: Colors.brandPrimary,
   },
   cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardTitle: { flex: 1, color: '#ccc', fontSize: 12, lineHeight: 16 },
@@ -419,20 +442,24 @@ const styles = StyleSheet.create({
   importBox: {
     width: SCREEN_WIDTH - PADDING * 2,
     height: 140,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#333',
-    borderStyle: 'dashed',
-    backgroundColor: '#141414',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  importIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  importPlus: { color: '#555', fontSize: 48, lineHeight: 56 },
-  importLabel: { color: '#555', fontSize: 14, marginTop: 8 },
+  importPlus: { color: Colors.textPrimary, fontSize: 36, lineHeight: 40 },
+  importLabel: { color: Colors.textPrimary, fontSize: 14, marginTop: 0 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING, paddingTop: 16, paddingBottom: 8 },
   selectingActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  selectAllText: { color: '#216BFF', fontSize: 14, fontWeight: '500', paddingHorizontal: 8, paddingVertical: 8 },
-  sectionTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  selectAllText: { color: Colors.brandPrimary, fontSize: 14, fontWeight: '500', paddingHorizontal: 8, paddingVertical: 8 },
+  sectionTitle: { color: Colors.textPrimary, fontSize: 17, fontWeight: '700' },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -440,5 +467,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  loadingText: { color: '#fff', fontSize: 15 },
+  loadingText: { color: Colors.textPrimary, fontSize: 15 },
 });

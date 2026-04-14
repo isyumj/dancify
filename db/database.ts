@@ -137,6 +137,15 @@ export async function setSetting(key: string, value: string): Promise<void> {
   );
 }
 
+export async function getFilenamesByPrefix(prefix: string): Promise<string[]> {
+  const database = await getDb();
+  const rows = await database.getAllAsync<{ filename: string }>(
+    'SELECT filename FROM videos WHERE filename LIKE ?',
+    `${prefix}%`
+  );
+  return rows.map((r) => r.filename);
+}
+
 export async function updateVideoDuration(
   id: number,
   duration: number

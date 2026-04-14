@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/theme';
 
 type Language = 'zh-Hans' | 'en';
 const LANG_KEY = 'pref_language';
@@ -147,7 +148,7 @@ export default function ProfileScreen() {
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={() => router.push('/language-modal')}
           >
-            <View style={[styles.iconBox, { backgroundColor: '#333333' }]}>
+            <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="language-outline" size={15} color="#fff" />
             </View>
             <Text style={styles.rowLabel}>语言设置</Text>
@@ -163,7 +164,7 @@ export default function ProfileScreen() {
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={() => Alert.alert('隐私政策', '即将上线，敬请期待。')}
           >
-            <View style={[styles.iconBox, { backgroundColor: '#333333' }]}>
+            <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="shield-checkmark-outline" size={15} color="#fff" />
             </View>
             <Text style={styles.rowLabel}>隐私政策</Text>
@@ -176,7 +177,7 @@ export default function ProfileScreen() {
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={() => Alert.alert('用户反馈', '即将上线，敬请期待。')}
           >
-            <View style={[styles.iconBox, { backgroundColor: '#333333' }]}>
+            <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="chatbubble-ellipses-outline" size={15} color="#fff" />
             </View>
             <Text style={styles.rowLabel}>用户反馈</Text>
@@ -192,7 +193,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  container: { flex: 1, backgroundColor: Colors.bgMain },
 
   header: {
     paddingHorizontal: 20,
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: '#161616',
+    backgroundColor: Colors.bgCard,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 7,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.bgCard,
     minWidth: 52,
     alignItems: 'center',
   },

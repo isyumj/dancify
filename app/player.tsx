@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Animated,
   View,
@@ -22,6 +23,7 @@ import { usePlayback } from '../hooks/usePlayback';
 import { Ionicons } from '@expo/vector-icons';
 import { PlayerControls } from '../components/PlayerControls';
 import { SetupSheet } from '../components/SetupSheet';
+import { Colors } from '../constants/theme';
 
 function fmt(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -58,11 +60,29 @@ export default function PlayerScreen() {
   const isMirror = usePlayerStore((s) => s.isMirror);
   const setCurrentVideoId = usePlayerStore((s) => s.setCurrentVideoId);
 
+  // Coach mark (one-time onboarding hint)
+  const [showCoachMark, setShowCoachMark] = useState(false);
+  const coachMarkOpacity = useRef(new Animated.Value(0)).current;
+  const coachMarkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Play icon overlay animation
+  const [showPlayIcon, setShowPlayIcon] = useState(false);
+  const playIconScale = useRef(new Animated.Value(1)).current;
+  const playIconOpacity = useRef(new Animated.Value(0)).current;
+
   // Double-tap seek (fullscreen)
   const lastTapTimeRef = useRef<number>(0);
   const fsTapWidthRef = useRef<number>(1);
+  const fsSingleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekIndicatorOpacity = useRef(new Animated.Value(0)).current;
   const [seekFeedback, setSeekFeedback] = useState<'left' | 'right' | null>(null);
+
+  // Double-tap seek (small screen)
+  const smLastTapTimeRef = useRef<number>(0);
+  const smTapWidthRef = useRef<number>(1);
+  const smSingleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const smSeekIndicatorOpacity = useRef(new Animated.Value(0)).current;
+  const [smSeekFeedback, setSmSeekFeedback] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => {
     if (tempPath && filenameParam) {
@@ -93,8 +113,34 @@ export default function PlayerScreen() {
   const player = useVideoPlayer(video?.localPath ?? null, (p) => {
     p.loop = false;
     p.play();
-    setIsPlaying(true);
   });
+
+  const dismissCoachMark = useCallback(() => {
+    if (!showCoachMark) return;
+    if (coachMarkTimerRef.current) {
+      clearTimeout(coachMarkTimerRef.current);
+      coachMarkTimerRef.current = null;
+    }
+    Animated.timing(coachMarkOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      setShowCoachMark(false);
+      AsyncStorage.setItem('onboarding_player_seen', '1');
+    });
+  }, [showCoachMark, coachMarkOpacity]);
+
+  useEffect(() => {
+    AsyncStorage.getItem('onboarding_player_seen').then((val) => {
+      if (val) return;
+      setShowCoachMark(true);
+      Animated.timing(coachMarkOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start(() => {
+        coachMarkTimerRef.current = setTimeout(() => {
+          Animated.timing(coachMarkOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+            setShowCoachMark(false);
+            AsyncStorage.setItem('onboarding_player_seen', '1');
+          });
+        }, 3000);
+      });
+    });
+  }, []);
 
   useEffect(() => {
     if (!player) return;
@@ -149,14 +195,25 @@ export default function PlayerScreen() {
     [player, duration]
   );
 
-  const togglePlay = () => {
+  const handleVideoTap = useCallback(() => {
     if (!player) return;
     if (player.playing) {
       player.pause();
+      playIconScale.setValue(0.7);
+      playIconOpacity.setValue(0);
+      setShowPlayIcon(true);
+      Animated.parallel([
+        Animated.spring(playIconScale, { toValue: 1, useNativeDriver: true, friction: 6 }),
+        Animated.timing(playIconOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+      ]).start();
     } else {
       player.play();
+      Animated.parallel([
+        Animated.timing(playIconScale, { toValue: 1.6, duration: 350, useNativeDriver: true }),
+        Animated.timing(playIconOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+      ]).start(() => setShowPlayIcon(false));
     }
-  };
+  }, [player, playIconScale, playIconOpacity]);
 
   const handleSetupDone = async () => {
     if (isNewImport && video && video.id === 0) {
@@ -168,9 +225,40 @@ export default function PlayerScreen() {
     setSetupVisible(false);
   };
 
-  const handleFsDoubleTap = useCallback((locationX: number) => {
+  const handleSmTap = useCallback((locationX: number) => {
+    const now = Date.now();
+    if (now - smLastTapTimeRef.current < 300) {
+      if (smSingleTapTimerRef.current) {
+        clearTimeout(smSingleTapTimerRef.current);
+        smSingleTapTimerRef.current = null;
+      }
+      const isLeft = locationX < smTapWidthRef.current / 2;
+      player?.seekBy(isLeft ? -5 : 5);
+      setSmSeekFeedback(isLeft ? 'left' : 'right');
+      smSeekIndicatorOpacity.setValue(1);
+      Animated.timing(smSeekIndicatorOpacity, {
+        toValue: 0,
+        duration: 700,
+        useNativeDriver: true,
+      }).start();
+      smLastTapTimeRef.current = 0;
+    } else {
+      smLastTapTimeRef.current = now;
+      smSingleTapTimerRef.current = setTimeout(() => {
+        smSingleTapTimerRef.current = null;
+        handleVideoTap();
+      }, 300);
+    }
+  }, [player, smSeekIndicatorOpacity, handleVideoTap]);
+
+  const handleFsTap = useCallback((locationX: number) => {
     const now = Date.now();
     if (now - lastTapTimeRef.current < 300) {
+      // Double tap — seek
+      if (fsSingleTapTimerRef.current) {
+        clearTimeout(fsSingleTapTimerRef.current);
+        fsSingleTapTimerRef.current = null;
+      }
       const isLeft = locationX < fsTapWidthRef.current / 2;
       player?.seekBy(isLeft ? -5 : 5);
       setSeekFeedback(isLeft ? 'left' : 'right');
@@ -183,8 +271,13 @@ export default function PlayerScreen() {
       lastTapTimeRef.current = 0;
     } else {
       lastTapTimeRef.current = now;
+      // Single tap — toggle play/pause after confirming no second tap
+      fsSingleTapTimerRef.current = setTimeout(() => {
+        fsSingleTapTimerRef.current = null;
+        handleVideoTap();
+      }, 300);
     }
-  }, [player, seekIndicatorOpacity]);
+  }, [player, seekIndicatorOpacity, handleVideoTap]);
 
   const handleSetupCancel = async () => {
     if (tempPath) {
@@ -202,7 +295,7 @@ export default function PlayerScreen() {
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
           {video ? video.filename.replace(/\.[^.]+$/, '') : '播放器'}
         </Text>
         <View style={styles.headerSpacer} />
@@ -219,26 +312,58 @@ export default function PlayerScreen() {
             style={[styles.video, isMirror && styles.mirrored, isFullscreen && styles.hidden]}
             nativeControls={false}
             contentFit="contain"
-            pointerEvents={isFullscreen ? 'none' : 'auto'}
+            pointerEvents="none"
           />
         ) : (
           <View style={styles.videoPlaceholder}>
             <Text style={{ color: '#666' }}>加载中…</Text>
           </View>
         )}
+        {showPlayIcon && (
+          <Animated.View
+            style={[styles.playIconOverlay, { opacity: playIconOpacity, transform: [{ scale: playIconScale }] }]}
+            pointerEvents="none"
+          >
+            <Ionicons name="play" size={72} color="rgba(255,255,255,0.92)" />
+          </Animated.View>
+        )}
         {countdownNum !== null && (
           <View style={styles.countdownOverlay}>
             <Text style={styles.countdownText}>{countdownNum}</Text>
           </View>
+        )}
+        {!isFullscreen && (
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onLayout={(e) => { smTapWidthRef.current = e.nativeEvent.layout.width; }}
+            onPress={(e) => handleSmTap(e.nativeEvent.locationX)}
+          />
+        )}
+        {/* 小屏双击 seek 提示 */}
+        {smSeekFeedback && (
+          <Animated.View
+            style={[
+              styles.fsSeekIndicator,
+              smSeekFeedback === 'left' ? styles.fsSeekLeft : styles.fsSeekRight,
+              { opacity: smSeekIndicatorOpacity },
+            ]}
+            pointerEvents="none"
+          >
+            <Ionicons
+              name={smSeekFeedback === 'left' ? 'play-back' : 'play-forward'}
+              size={26}
+              color="#fff"
+            />
+            <Text style={styles.fsSeekText}>
+              {smSeekFeedback === 'left' ? '-5秒' : '+5秒'}
+            </Text>
+          </Animated.View>
         )}
       </View>
 
       {/* 控制栏 */}
       <View style={styles.controlRow}>
         <Text style={styles.timeLabel}>{fmt(currentTime)} / {fmt(duration)}</Text>
-        <Pressable style={styles.playBtn} onPress={togglePlay}>
-          <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#fff" />
-        </Pressable>
         <TouchableOpacity onPress={() => setIsFullscreen(true)} activeOpacity={0.7} style={styles.fsBtn}>
           <Ionicons name="expand" size={20} color="#aaa" />
         </TouchableOpacity>
@@ -303,6 +428,15 @@ export default function PlayerScreen() {
         onCancel={isNewImport ? handleSetupCancel : undefined}
       />
 
+      {/* 新手引导提示 */}
+      {showCoachMark && (
+        <Pressable style={styles.coachMark} onPress={dismissCoachMark}>
+          <Animated.View style={[styles.coachMarkBox, { opacity: coachMarkOpacity }]}>
+            <Text style={styles.coachMarkText}>👆 单击画面暂停/播放，双击两侧 ±5秒</Text>
+          </Animated.View>
+        </Pressable>
+      )}
+
       {/* 全屏 Modal */}
       <Modal
         visible={isFullscreen}
@@ -321,11 +455,21 @@ export default function PlayerScreen() {
             />
           )}
 
-          {/* 双击快退/快进手势层 */}
+          {/* 播放图标浮层（全屏复用） */}
+          {showPlayIcon && (
+            <Animated.View
+              style={[styles.playIconOverlay, { opacity: playIconOpacity, transform: [{ scale: playIconScale }] }]}
+              pointerEvents="none"
+            >
+              <Ionicons name="play" size={72} color="rgba(255,255,255,0.92)" />
+            </Animated.View>
+          )}
+
+          {/* 单击暂停/播放 + 双击快退/快进手势层 */}
           <Pressable
             style={styles.fsTapOverlay}
             onLayout={(e) => { fsTapWidthRef.current = e.nativeEvent.layout.width; }}
-            onPress={(e) => handleFsDoubleTap(e.nativeEvent.locationX)}
+            onPress={(e) => handleFsTap(e.nativeEvent.locationX)}
           />
 
           {/* 双击 seek 提示 */}
@@ -356,10 +500,6 @@ export default function PlayerScreen() {
 
           {/* 全屏底部控制栏 */}
           <View style={[styles.fsControls, { paddingBottom: insets.bottom + 12 }]}>
-            <Pressable onPress={togglePlay} style={styles.fsPlayBtn}>
-              <Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color="#fff" />
-            </Pressable>
-
             <Text style={styles.fsTime}>{fmt(currentTime)}</Text>
 
             {/* 进度条 */}
@@ -413,12 +553,12 @@ export default function PlayerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  container: { flex: 1, backgroundColor: Colors.bgMain },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+    backgroundColor: Colors.bgMain,
     paddingHorizontal: 16,
     paddingBottom: 10,
   },
@@ -447,6 +587,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  playIconOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   countdownOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -470,14 +619,6 @@ const styles = StyleSheet.create({
     color: '#aaa',
     fontSize: 13,
     flex: 1,
-  },
-  playBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1e1e1e',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   fsBtn: {
     flex: 1,
@@ -533,7 +674,7 @@ const styles = StyleSheet.create({
   },
   fsProgressFill: {
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.brandPrimary,
     borderRadius: 2,
   },
 
@@ -588,5 +729,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+  },
+
+  coachMark: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coachMarkBox: {
+    backgroundColor: 'rgba(0,0,0,0.82)',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  coachMarkText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

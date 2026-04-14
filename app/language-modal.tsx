@@ -4,8 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-
-const BRAND = '#216BFF';
+import { Colors } from '../constants/theme';
 const LANG_KEY = 'pref_language';
 
 type Language = 'zh-Hans' | 'en';
@@ -57,7 +56,7 @@ export default function LanguageModal() {
                   {opt.label}
                 </Text>
                 {language === opt.key && (
-                  <Ionicons name="checkmark" size={20} color={BRAND} />
+                  <Ionicons name="checkmark" size={20} color={Colors.brandPrimary} />
                 )}
               </Pressable>
             </React.Fragment>
@@ -71,7 +70,7 @@ export default function LanguageModal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: Colors.bgMain,
   },
   header: {
     flexDirection: 'row',
@@ -92,7 +91,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#161616',
+    backgroundColor: Colors.bgCard,
     borderRadius: 14,
     paddingHorizontal: 16,
     marginHorizontal: 16,
@@ -106,7 +105,7 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   rowPressed: { opacity: 0.5 },
-  label: { flex: 1, color: '#9a9a9a', fontSize: 16 },
+  label: { flex: 1, color: Colors.textSecondary, fontSize: 16 },
   labelActive: { color: '#fff', fontWeight: '600' },
   divider: {
     height: StyleSheet.hairlineWidth,
