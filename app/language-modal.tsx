@@ -1,39 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage, type AppLanguage } from '../i18n';
 import { Colors } from '../constants/theme';
-const LANG_KEY = 'pref_language';
 
-type Language = 'zh-Hans' | 'en';
-const OPTIONS: { key: Language; label: string }[] = [
-  { key: 'zh-Hans', label: '简体中文' },
-  { key: 'en', label: 'English' },
+const OPTIONS: { key: AppLanguage; labelKey: string }[] = [
+  { key: 'zh', labelKey: 'language.zh' },
+  { key: 'en', labelKey: 'language.en' },
 ];
 
 export default function LanguageModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [language, setLanguage] = useState<Language>('zh-Hans');
+  const { t, i18n } = useTranslation();
 
-  useEffect(() => {
-    AsyncStorage.getItem(LANG_KEY).then((v) => {
-      if (v) setLanguage(v as Language);
-    });
-  }, []);
-
-  const handleSelect = async (lang: Language) => {
-    await AsyncStorage.setItem(LANG_KEY, lang);
-    setLanguage(lang);
+  const handleSelect = async (lang: AppLanguage) => {
+    await changeLanguage(lang);
+    router.back();
   };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        {/* 自定义 Header */}
+        {/* Header */}
         <View style={styles.header}>
           <Pressable
             onPress={() => router.back()}
@@ -41,26 +34,30 @@ export default function LanguageModal() {
           >
             <Ionicons name="chevron-back" size={28} color="#fff" />
           </Pressable>
-          <Text style={styles.headerTitle}>语言设置</Text>
+          <Text style={styles.headerTitle}>{t('language.title')}</Text>
           <View style={styles.headerBtn} />
         </View>
+
         <View style={styles.card}>
-          {OPTIONS.map((opt, i) => (
-            <React.Fragment key={opt.key}>
-              {i > 0 && <View style={styles.divider} />}
-              <Pressable
-                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-                onPress={() => handleSelect(opt.key)}
-              >
-                <Text style={[styles.label, language === opt.key && styles.labelActive]}>
-                  {opt.label}
-                </Text>
-                {language === opt.key && (
-                  <Ionicons name="checkmark" size={20} color={Colors.brandPrimary} />
-                )}
-              </Pressable>
-            </React.Fragment>
-          ))}
+          {OPTIONS.map((opt, i) => {
+            const isActive = i18n.language === opt.key;
+            return (
+              <React.Fragment key={opt.key}>
+                {i > 0 && <View style={styles.divider} />}
+                <Pressable
+                  style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                  onPress={() => handleSelect(opt.key)}
+                >
+                  <Text style={[styles.label, isActive && styles.labelActive]}>
+                    {t(opt.labelKey)}
+                  </Text>
+                  {isActive && (
+                    <Ionicons name="checkmark" size={20} color={Colors.brandPrimary} />
+                  )}
+                </Pressable>
+              </React.Fragment>
+            );
+          })}
         </View>
       </View>
     </>

@@ -1,0 +1,73 @@
+{
+  "profile": {
+    "title": "我的",
+    "storage": {
+      "title": "存储管理",
+      "videoLibrary": "视频库占用",
+      "cache": "临时缓存",
+      "clearBtn": "清除",
+      "cacheHint": "清除缓存不会删除你已导入的练习视频。",
+      "clearCacheTitle": "清除缓存",
+      "clearCacheMessage": "将删除应用临时文件，不影响已保存的视频。确认继续？",
+      "clearConfirm": "清除",
+      "cacheCleared": "缓存已清除",
+      "clearFailed": "清除失败"
+    },
+    "preferences": {
+      "title": "偏好设置",
+      "language": "语言设置"
+    },
+    "about": {
+      "title": "关于与支持",
+      "privacy": "隐私政策",
+      "feedback": "用户反馈"
+    }
+  },
+  "language": {
+    "title": "语言设置",
+    "zh": "简体中文",
+    "en": "English"
+  },
+  "tabs": {
+    "library": "练习室",
+    "profile": "我的"
+  },
+  "library": {
+    "importBanner": "导入视频开始练习",
+    "sectionTitle": "我的练舞视频",
+    "manage": "管理",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "emptyTitle": "还没有视频",
+    "emptySubtitle": "导入一个视频开始练习吧",
+    "importing": "导入中…",
+    "importFailed": "导入失败",
+    "deleteTitle": "删除视频",
+    "deleteConfirm": "确认删除「{{name}}」？相关片段也会一并删除。",
+    "bulkDeleteConfirm": "确认删除选中的 {{count}} 个视频？相关片段也会一并删除。",
+    "deleteBtn": "删除",
+    "renameFailed": "重命名失败，请重试"
+  },
+  "common": {
+    "cancel": "取消",
+    "done": "完成",
+    "comingSoon": "即将上线，敬请期待。"
+  },
+  "setup": {
+    "title": "初始设置",
+    "mirror": "镜像模式",
+    "countdown": "开头倒计时",
+    "speed": "播放速度",
+    "start": "开始练习"
+  },
+  "player": {
+    "title": "播放器",
+    "loading": "加载中…",
+    "coachMark": "单击暂停 / 播放",
+    "seekBack": "-5秒",
+    "seekForward": "+5秒",
+    "error": "错误",
+    "videoNotFound": "视频不存在",
+    "back": "返回"
+  }
+}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, Text } from 'react-native';
+import { View, StyleSheet, Pressable, Text, Switch } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { usePlayerStore } from '../store/playerStore';
 import { PlaybackSpeed } from '../types';
 import { Colors } from '../constants/theme';
@@ -7,6 +8,7 @@ import { Colors } from '../constants/theme';
 const SPEEDS: PlaybackSpeed[] = [0.7, 0.8, 0.9, 1.0];
 
 export function PlayerControls() {
+  const { t } = useTranslation();
   const {
     speed, setSpeed,
     isMirror, toggleMirror,
@@ -30,21 +32,28 @@ export function PlayerControls() {
         ))}
       </View>
 
-      {/* Mirror + Countdown row */}
-      <View style={styles.segmented}>
-        <Pressable
-          style={[styles.pill, isMirror && styles.pillActiveSpeed]}
-          onPress={toggleMirror}
-        >
-          <Text style={[styles.pillText, isMirror && styles.pillTextActiveSpeed]}>镜像</Text>
-        </Pressable>
+      <View style={styles.switchGroup}>
+        {/* Mirror row */}
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>{t('setup.mirror')}</Text>
+          <Switch
+            value={isMirror}
+            onValueChange={toggleMirror}
+            trackColor={{ false: '#333', true: Colors.brandPrimary }}
+            thumbColor="#fff"
+          />
+        </View>
 
-        <Pressable
-          style={[styles.pill, isCountdownEnabled && styles.pillActiveSpeed]}
-          onPress={toggleCountdown}
-        >
-          <Text style={[styles.pillText, isCountdownEnabled && styles.pillTextActiveSpeed]}>倒计时</Text>
-        </Pressable>
+        {/* Countdown row */}
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>{t('setup.countdown')}</Text>
+          <Switch
+            value={isCountdownEnabled}
+            onValueChange={toggleCountdown}
+            trackColor={{ false: '#333', true: Colors.brandPrimary }}
+            thumbColor="#fff"
+          />
+        </View>
       </View>
     </View>
   );
@@ -58,7 +67,7 @@ const styles = StyleSheet.create({
   },
   segmented: {
     flexDirection: 'row',
-    backgroundColor: Colors.bgCard,
+    backgroundColor: '#1e1e1e',
     borderRadius: 8,
     padding: 3,
     gap: 3,
@@ -81,5 +90,19 @@ const styles = StyleSheet.create({
   pillTextActiveSpeed: {
     color: '#fff',
     fontWeight: '600',
+  },
+
+  switchGroup: {
+    gap: 4,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  switchLabel: {
+    color: '#ccc',
+    fontSize: 15,
   },
 });

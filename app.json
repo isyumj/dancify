@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "DanceWithMe",
-    "slug": "DanceWithMe",
+    "name": "Dancify",
+    "slug": "dancify",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.DanceWithMe"
+      "bundleIdentifier": "com.isyumj.dancify",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Dancify needs access to your photo library to let you import local videos for dance practice."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,10 +26,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
+      "permissions": [],
+      "package": "com.isyumj.dancify"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,16 +39,22 @@
       [
         "expo-audio",
         {
-          "microphonePermission": false
+          "microphonePermission": false,
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
         }
       ],
       "expo-sqlite",
       [
         "expo-image-picker",
         {
-          "photosPermission": "选择视频用于扒舞练习"
+          "photosPermission": "Dancify needs access to your photo library to let you import local videos for dance practice.",
+          "cameraPermission": false
         }
-      ]
+      ],
+      "expo-localization",
+      "expo-font",
+      "expo-asset"
     ]
   }
 }

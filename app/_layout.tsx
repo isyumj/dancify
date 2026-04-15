@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack, SplashScreen } from 'expo-router';
 import { initDb } from '../db/database';
+import '../i18n';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,6 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="player" options={{ headerShown: false }} />
-        <Stack.Screen name="language-modal" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
   );

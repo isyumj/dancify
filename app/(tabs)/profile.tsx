@@ -12,12 +12,9 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../../constants/theme';
-
-type Language = 'zh-Hans' | 'en';
-const LANG_KEY = 'pref_language';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(1) + ' GB';
@@ -39,9 +36,9 @@ async function dirSize(dir: string): Promise<number> {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const [videosBytes, setVideosBytes] = useState(0);
   const [cacheBytes, setCacheBytes] = useState(0);
-  const [language, setLanguage] = useState<Language>('zh-Hans');
   const [clearing, setClearing] = useState(false);
 
   const loadStorage = useCallback(async () => {
@@ -60,22 +57,17 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadStorage();
-      AsyncStorage.getItem(LANG_KEY).then((v) => {
-        if (v) setLanguage(v as Language);
-      });
     }, [])
   );
 
-  const LANG_LABELS: Record<Language, string> = { 'zh-Hans': '简体中文', en: 'English' };
-
   const handleClearCache = () => {
     Alert.alert(
-      '清除缓存',
-      '将删除应用临时文件，不影响已保存的视频。确认继续？',
+      t('profile.storage.clearCacheTitle'),
+      t('profile.storage.clearCacheMessage'),
       [
-        { text: '取消', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '清除',
+          text: t('profile.storage.clearConfirm'),
           style: 'destructive',
           onPress: async () => {
             setClearing(true);
@@ -88,9 +80,9 @@ export default function ProfileScreen() {
                 }
               }
               await loadStorage();
-              Alert.alert('完成', '缓存已清除');
+              Alert.alert(t('common.done'), t('profile.storage.cacheCleared'));
             } catch (e) {
-              Alert.alert('清除失败', String(e));
+              Alert.alert(t('profile.storage.clearFailed'), String(e));
             } finally {
               setClearing(false);
             }
@@ -100,30 +92,30 @@ export default function ProfileScreen() {
     );
   };
 
+  const currentLangLabel = t(`language.${i18n.language as 'zh' | 'en'}`);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>我的</Text>
+        <Text style={styles.headerTitle}>{t('profile.title')}</Text>
       </View>
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── 存储管理 ── */}
-        <Text style={styles.groupLabel}>存储管理</Text>
+        {/* ── Storage ── */}
+        <Text style={styles.groupLabel}>{t('profile.storage.title')}</Text>
         <View style={styles.card}>
-          {/* 视频库占用（不可点击） */}
           <View style={styles.storageItem}>
-            <Text style={styles.storageLabel}>视频库占用</Text>
+            <Text style={styles.storageLabel}>{t('profile.storage.videoLibrary')}</Text>
             <Text style={styles.storageValue}>{formatBytes(videosBytes)}</Text>
           </View>
 
           <View style={styles.divider} />
 
-          {/* 临时缓存 + 清除按钮 */}
           <View style={styles.storageItem}>
-            <Text style={styles.storageLabel}>临时缓存</Text>
+            <Text style={styles.storageLabel}>{t('profile.storage.cache')}</Text>
             <Text style={styles.storageValue}>{formatBytes(cacheBytes)}</Text>
             <Pressable
               style={({ pressed }) => [styles.clearBtn, pressed && styles.clearBtnPressed]}
@@ -133,16 +125,16 @@ export default function ProfileScreen() {
               {clearing ? (
                 <ActivityIndicator size="small" color="#FF453A" />
               ) : (
-                <Text style={styles.clearBtnText}>清除</Text>
+                <Text style={styles.clearBtnText}>{t('profile.storage.clearBtn')}</Text>
               )}
             </Pressable>
           </View>
 
-          <Text style={styles.cacheHint}>清除缓存不会删除你已导入的练习视频。</Text>
+          <Text style={styles.cacheHint}>{t('profile.storage.cacheHint')}</Text>
         </View>
 
-        {/* ── 偏好设置 ── */}
-        <Text style={styles.groupLabel}>偏好设置</Text>
+        {/* ── Preferences ── */}
+        <Text style={styles.groupLabel}>{t('profile.preferences.title')}</Text>
         <View style={styles.card}>
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
@@ -151,23 +143,23 @@ export default function ProfileScreen() {
             <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="language-outline" size={15} color="#fff" />
             </View>
-            <Text style={styles.rowLabel}>语言设置</Text>
-            <Text style={styles.rowHint}>{LANG_LABELS[language]}</Text>
+            <Text style={styles.rowLabel}>{t('profile.preferences.language')}</Text>
+            <Text style={styles.rowHint}>{currentLangLabel}</Text>
             <Ionicons name="chevron-forward" size={16} color="#444" />
           </Pressable>
         </View>
 
-        {/* ── 关于与支持 ── */}
-        <Text style={styles.groupLabel}>关于与支持</Text>
+        {/* ── About ── */}
+        <Text style={styles.groupLabel}>{t('profile.about.title')}</Text>
         <View style={styles.card}>
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => Alert.alert('隐私政策', '即将上线，敬请期待。')}
+            onPress={() => Alert.alert(t('profile.about.privacy'), t('common.comingSoon'))}
           >
             <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="shield-checkmark-outline" size={15} color="#fff" />
             </View>
-            <Text style={styles.rowLabel}>隐私政策</Text>
+            <Text style={styles.rowLabel}>{t('profile.about.privacy')}</Text>
             <Ionicons name="chevron-forward" size={16} color="#444" />
           </Pressable>
 
@@ -175,17 +167,16 @@ export default function ProfileScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => Alert.alert('用户反馈', '即将上线，敬请期待。')}
+            onPress={() => Alert.alert(t('profile.about.feedback'), t('common.comingSoon'))}
           >
             <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="chatbubble-ellipses-outline" size={15} color="#fff" />
             </View>
-            <Text style={styles.rowLabel}>用户反馈</Text>
+            <Text style={styles.rowLabel}>{t('profile.about.feedback')}</Text>
             <Ionicons name="chevron-forward" size={16} color="#444" />
           </Pressable>
         </View>
 
-        {/* 版本号 */}
         <Text style={styles.version}>Dancify  v1.0.0</Text>
       </ScrollView>
     </View>
@@ -228,7 +219,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  // Storage list rows
   storageItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -248,7 +238,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 7,
-    backgroundColor: Colors.bgCard,
+    backgroundColor: '#48484A',
     minWidth: 52,
     alignItems: 'center',
   },
@@ -270,7 +260,6 @@ const styles = StyleSheet.create({
     marginHorizontal: -16,
   },
 
-  // Rows (偏好 / 关于)
   row: {
     flexDirection: 'row',
     alignItems: 'center',

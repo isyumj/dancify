@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Animated,
   View,
@@ -12,15 +11,17 @@ import {
   StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { getVideo, insertVideo, updateVideoDuration } from '../db/database';
+import { getVideo, insertVideo, updateVideoDuration, updateVideoThumbnail, getSetting, setSetting } from '../db/database';
+import { getThumbnailAsync } from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Video } from '../types';
 import { usePlayerStore, loadVideoSettings, saveVideoSettings } from '../store/playerStore';
 import { usePlayback } from '../hooks/usePlayback';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { PlayerControls } from '../components/PlayerControls';
 import { SetupSheet } from '../components/SetupSheet';
 import { Colors } from '../constants/theme';
@@ -32,19 +33,22 @@ function fmt(seconds: number): string {
 }
 
 export default function PlayerScreen() {
-  const { videoId, tempPath, filename: filenameParam, duration: durationParam } =
+  const { videoId, tempPath, filename: filenameParam, duration: durationParam, isNew } =
     useLocalSearchParams<{
       videoId?: string;
       tempPath?: string;
       filename?: string;
       duration?: string;
+      /** Set by the library when opening a newly background-imported video for the first time. */
+      isNew?: string;
     }>();
 
   const isNewImport = !!tempPath;
   const insets = useSafeAreaInsets();
 
   const [video, setVideo] = useState<Video | null>(null);
-  const [setupVisible, setSetupVisible] = useState(isNewImport);
+  // Show setup sheet for legacy tempPath imports OR first open of background imports
+  const [setupVisible, setSetupVisible] = useState(isNewImport || isNew === 'true');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -57,8 +61,13 @@ export default function PlayerScreen() {
   const smFillAnim = useRef(new Animated.Value(0)).current;
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
+  const { t } = useTranslation();
   const isMirror = usePlayerStore((s) => s.isMirror);
   const setCurrentVideoId = usePlayerStore((s) => s.setCurrentVideoId);
+
+  // One-time hint flags (null = not yet checked from storage)
+  const [coachMarkAllowed, setCoachMarkAllowed] = useState<boolean | null>(null);
+  const [fsOnboardingAllowed, setFsOnboardingAllowed] = useState<boolean | null>(null);
 
   // Coach mark (one-time onboarding hint)
   const [showCoachMark, setShowCoachMark] = useState(false);
@@ -69,6 +78,18 @@ export default function PlayerScreen() {
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const playIconScale = useRef(new Animated.Value(1)).current;
   const playIconOpacity = useRef(new Animated.Value(0)).current;
+
+  // Fullscreen onboarding overlay (double-tap seek hint)
+  const [showFsOnboarding, setShowFsOnboarding] = useState(false);
+  const fsOnboardingOpacity = useRef(new Animated.Value(0)).current;
+  const rippleLeftScale = useRef(new Animated.Value(0.3)).current;
+  const rippleLeftOpacity = useRef(new Animated.Value(0)).current;
+  const rippleRightScale = useRef(new Animated.Value(0.3)).current;
+  const rippleRightOpacity = useRef(new Animated.Value(0)).current;
+  const fsOnboardingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fsOnboardingStaggerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rippleAnimLeftRef = useRef<Animated.CompositeAnimation | null>(null);
+  const rippleAnimRightRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Double-tap seek (fullscreen)
   const lastTapTimeRef = useRef<number>(0);
@@ -99,7 +120,7 @@ export default function PlayerScreen() {
       const vidId = parseInt(videoId, 10);
       getVideo(vidId).then((v) => {
         if (!v) {
-          Alert.alert('错误', '视频不存在', [{ text: '返回', onPress: () => router.back() }]);
+          Alert.alert(t('player.error'), t('player.videoNotFound'), [{ text: t('player.back'), onPress: () => router.back() }]);
           return;
         }
         setVideo(v);
@@ -115,6 +136,21 @@ export default function PlayerScreen() {
     p.play();
   });
 
+  const dismissFsOnboarding = useCallback(() => {
+    if (fsOnboardingTimerRef.current) {
+      clearTimeout(fsOnboardingTimerRef.current);
+      fsOnboardingTimerRef.current = null;
+    }
+    if (fsOnboardingStaggerRef.current) {
+      clearTimeout(fsOnboardingStaggerRef.current);
+      fsOnboardingStaggerRef.current = null;
+    }
+    rippleAnimLeftRef.current?.stop();
+    rippleAnimRightRef.current?.stop();
+    Animated.timing(fsOnboardingOpacity, { toValue: 0, duration: 300, useNativeDriver: true })
+      .start(() => setShowFsOnboarding(false));
+  }, [fsOnboardingOpacity]);
+
   const dismissCoachMark = useCallback(() => {
     if (!showCoachMark) return;
     if (coachMarkTimerRef.current) {
@@ -123,24 +159,101 @@ export default function PlayerScreen() {
     }
     Animated.timing(coachMarkOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
       setShowCoachMark(false);
-      AsyncStorage.setItem('onboarding_player_seen', '1');
     });
   }, [showCoachMark, coachMarkOpacity]);
 
+  // On mount: read both "has seen" flags from persistent storage
   useEffect(() => {
-    AsyncStorage.getItem('onboarding_player_seen').then((val) => {
-      if (val) return;
-      setShowCoachMark(true);
-      Animated.timing(coachMarkOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start(() => {
-        coachMarkTimerRef.current = setTimeout(() => {
-          Animated.timing(coachMarkOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
-            setShowCoachMark(false);
-            AsyncStorage.setItem('onboarding_player_seen', '1');
-          });
-        }, 3000);
-      });
-    });
+    (async () => {
+      const [cm, fs] = await Promise.all([
+        getSetting('hasSeenCoachMark'),
+        getSetting('hasSeenFsOnboarding'),
+      ]);
+      if (!cm) {
+        setSetting('hasSeenCoachMark', '1').catch(() => {});
+        setCoachMarkAllowed(true);
+      } else {
+        setCoachMarkAllowed(false);
+      }
+      setFsOnboardingAllowed(!fs);
+    })();
   }, []);
+
+  useEffect(() => {
+    if (!isFullscreen || fsOnboardingAllowed !== true) return;
+
+    // Mark as seen so it won't show again
+    setSetting('hasSeenFsOnboarding', '1').catch(() => {});
+    setFsOnboardingAllowed(false);
+
+    setShowFsOnboarding(true);
+    fsOnboardingOpacity.setValue(1);
+
+    const leftAnim = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(rippleLeftScale, { toValue: 0.3, duration: 0, useNativeDriver: true }),
+          Animated.timing(rippleLeftScale, { toValue: 1.8, duration: 1500, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(rippleLeftOpacity, { toValue: 0.8, duration: 0, useNativeDriver: true }),
+          Animated.timing(rippleLeftOpacity, { toValue: 0, duration: 1500, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    const rightAnim = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(rippleRightScale, { toValue: 0.3, duration: 0, useNativeDriver: true }),
+          Animated.timing(rippleRightScale, { toValue: 1.8, duration: 1500, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(rippleRightOpacity, { toValue: 0.8, duration: 0, useNativeDriver: true }),
+          Animated.timing(rippleRightOpacity, { toValue: 0, duration: 1500, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    rippleAnimLeftRef.current = leftAnim;
+    rippleAnimRightRef.current = rightAnim;
+
+    leftAnim.start();
+    rightAnim.start();
+
+    fsOnboardingTimerRef.current = setTimeout(() => {
+      fsOnboardingTimerRef.current = null;
+      Animated.timing(fsOnboardingOpacity, { toValue: 0, duration: 400, useNativeDriver: true })
+        .start(() => {
+          setShowFsOnboarding(false);
+          leftAnim.stop();
+          rightAnim.stop();
+        });
+    }, 3000);
+
+    return () => {
+      if (fsOnboardingTimerRef.current) {
+        clearTimeout(fsOnboardingTimerRef.current);
+        fsOnboardingTimerRef.current = null;
+      }
+      if (fsOnboardingStaggerRef.current) {
+        clearTimeout(fsOnboardingStaggerRef.current);
+        fsOnboardingStaggerRef.current = null;
+      }
+      leftAnim.stop();
+      rightAnim.stop();
+    };
+  }, [isFullscreen, fsOnboardingAllowed]);
+
+  useEffect(() => {
+    if (coachMarkAllowed !== true) return;
+    setShowCoachMark(true);
+    Animated.timing(coachMarkOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start(() => {
+      coachMarkTimerRef.current = setTimeout(() => {
+        Animated.timing(coachMarkOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+          setShowCoachMark(false);
+        });
+      }, 3000);
+    });
+  }, [coachMarkAllowed]);
 
   useEffect(() => {
     if (!player) return;
@@ -217,15 +330,26 @@ export default function PlayerScreen() {
 
   const handleSetupDone = async () => {
     if (isNewImport && video && video.id === 0) {
+      // Legacy tempPath flow: video not yet in DB — insert now
       const id = await insertVideo(video.filename, duration || video.duration, video.localPath);
       setVideo({ ...video, id });
       setCurrentVideoId(id);
       await saveVideoSettings(id);
+      // Generate thumbnail in background — don't block setup completion
+      getThumbnailAsync(video.localPath, { time: 0 })
+        .then((result: { uri: string }) => updateVideoThumbnail(id, result.uri))
+        .catch(() => {});
+    } else if (video && video.id > 0) {
+      // Background import flow (isNew) or re-opened video:
+      // video is already in DB, just save the user's chosen settings
+      setCurrentVideoId(video.id);
+      await saveVideoSettings(video.id);
     }
     setSetupVisible(false);
   };
 
   const handleSmTap = useCallback((locationX: number) => {
+    if (showCoachMark) dismissCoachMark();
     const now = Date.now();
     if (now - smLastTapTimeRef.current < 300) {
       if (smSingleTapTimerRef.current) {
@@ -249,7 +373,7 @@ export default function PlayerScreen() {
         handleVideoTap();
       }, 300);
     }
-  }, [player, smSeekIndicatorOpacity, handleVideoTap]);
+  }, [player, smSeekIndicatorOpacity, handleVideoTap, showCoachMark, dismissCoachMark]);
 
   const handleFsTap = useCallback((locationX: number) => {
     const now = Date.now();
@@ -296,7 +420,7 @@ export default function PlayerScreen() {
           <Ionicons name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-          {video ? video.filename.replace(/\.[^.]+$/, '') : '播放器'}
+          {video ? video.filename.replace(/\.[^.]+$/, '') : t('player.title')}
         </Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -316,7 +440,7 @@ export default function PlayerScreen() {
           />
         ) : (
           <View style={styles.videoPlaceholder}>
-            <Text style={{ color: '#666' }}>加载中…</Text>
+            <Text style={{ color: '#666' }}>{t('player.loading')}</Text>
           </View>
         )}
         {showPlayIcon && (
@@ -355,12 +479,21 @@ export default function PlayerScreen() {
               color="#fff"
             />
             <Text style={styles.fsSeekText}>
-              {smSeekFeedback === 'left' ? '-5秒' : '+5秒'}
+              {smSeekFeedback === 'left' ? t('player.seekBack') : t('player.seekForward')}
             </Text>
+          </Animated.View>
+        )}
+        {/* 新手引导提示 */}
+        {showCoachMark && (
+          <Animated.View style={[styles.coachMark, { opacity: coachMarkOpacity }]} pointerEvents="none">
+            <MaterialCommunityIcons name="play-pause" size={48} color="rgba(255,255,255,0.9)" />
+            <Text style={styles.coachMarkText}>{t('player.coachMark')}</Text>
           </Animated.View>
         )}
       </View>
 
+      {/* 控制栏 + 进度条 + 操作区（统一底色） */}
+      <View style={styles.bottomArea}>
       {/* 控制栏 */}
       <View style={styles.controlRow}>
         <Text style={styles.timeLabel}>{fmt(currentTime)} / {fmt(duration)}</Text>
@@ -421,6 +554,7 @@ export default function PlayerScreen() {
       </View>
 
       <PlayerControls />
+      </View>
 
       <SetupSheet
         visible={setupVisible}
@@ -428,14 +562,6 @@ export default function PlayerScreen() {
         onCancel={isNewImport ? handleSetupCancel : undefined}
       />
 
-      {/* 新手引导提示 */}
-      {showCoachMark && (
-        <Pressable style={styles.coachMark} onPress={dismissCoachMark}>
-          <Animated.View style={[styles.coachMarkBox, { opacity: coachMarkOpacity }]}>
-            <Text style={styles.coachMarkText}>👆 单击画面暂停/播放，双击两侧 ±5秒</Text>
-          </Animated.View>
-        </Pressable>
-      )}
 
       {/* 全屏 Modal */}
       <Modal
@@ -487,7 +613,7 @@ export default function PlayerScreen() {
                 color="#fff"
               />
               <Text style={styles.fsSeekText}>
-                {seekFeedback === 'left' ? '-5秒' : '+5秒'}
+                {seekFeedback === 'left' ? t('player.seekBack') : t('player.seekForward')}
               </Text>
             </Animated.View>
           )}
@@ -496,6 +622,36 @@ export default function PlayerScreen() {
             <View style={styles.countdownOverlay}>
               <Text style={styles.countdownText}>{countdownNum}</Text>
             </View>
+          )}
+
+          {/* 全屏双击 Onboarding Overlay */}
+          {showFsOnboarding && (
+            <Pressable style={StyleSheet.absoluteFill} onPress={dismissFsOnboarding}>
+              <Animated.View style={[styles.fsOnboardingOverlay, { opacity: fsOnboardingOpacity }]}>
+                <View style={[styles.fsOnboardingHint, styles.fsOnboardingHintLeft]}>
+                  <View style={styles.rippleContainer}>
+                    <Animated.View
+                      style={[styles.rippleCircle, {
+                        transform: [{ scale: rippleLeftScale }],
+                        opacity: rippleLeftOpacity,
+                      }]}
+                    />
+                  </View>
+                  <Text style={styles.fsOnboardingValue}>{t('player.seekBack')}</Text>
+                </View>
+                <View style={[styles.fsOnboardingHint, styles.fsOnboardingHintRight]}>
+                  <View style={styles.rippleContainer}>
+                    <Animated.View
+                      style={[styles.rippleCircle, {
+                        transform: [{ scale: rippleRightScale }],
+                        opacity: rippleRightOpacity,
+                      }]}
+                    />
+                  </View>
+                  <Text style={styles.fsOnboardingValue}>{t('player.seekForward')}</Text>
+                </View>
+              </Animated.View>
+            </Pressable>
           )}
 
           {/* 全屏底部控制栏 */}
@@ -553,12 +709,13 @@ export default function PlayerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgMain },
+  container: { flex: 1, backgroundColor: '#000' },
+  bottomArea: { flex: 1, backgroundColor: '#000' },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgMain,
+    backgroundColor: '#000',
     paddingHorizontal: 16,
     paddingBottom: 10,
   },
@@ -680,7 +837,7 @@ const styles = StyleSheet.create({
 
   // 小屏进度条
   smProgressTouchArea: {
-    height: 36,
+    height: 52,
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
@@ -731,27 +888,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  fsOnboardingOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  fsOnboardingHint: {
+    position: 'absolute',
+    top: '40%',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fsOnboardingHintLeft: {
+    left: '10%',
+  },
+  fsOnboardingHintRight: {
+    right: '10%',
+  },
+  rippleContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rippleCircle: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  fsOnboardingValue: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+
   coachMark: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  coachMarkBox: {
-    backgroundColor: 'rgba(0,0,0,0.82)',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    gap: 4,
+    gap: 12,
   },
   coachMarkText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '500',
-    textAlign: 'center',
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

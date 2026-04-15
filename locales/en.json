@@ -1,0 +1,73 @@
+{
+  "profile": {
+    "title": "Profile",
+    "storage": {
+      "title": "Storage",
+      "videoLibrary": "Video Library",
+      "cache": "Temp Cache",
+      "clearBtn": "Clear",
+      "cacheHint": "Clearing cache will not delete your imported practice videos.",
+      "clearCacheTitle": "Clear Cache",
+      "clearCacheMessage": "This will delete temporary files and will not affect saved videos. Continue?",
+      "clearConfirm": "Clear",
+      "cacheCleared": "Cache Cleared",
+      "clearFailed": "Clear Failed"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "language": "Language"
+    },
+    "about": {
+      "title": "About & Support",
+      "privacy": "Privacy Policy",
+      "feedback": "Feedback"
+    }
+  },
+  "language": {
+    "title": "Language",
+    "zh": "简体中文",
+    "en": "English"
+  },
+  "tabs": {
+    "library": "Studio",
+    "profile": "Profile"
+  },
+  "library": {
+    "importBanner": "Import a video to start practicing",
+    "sectionTitle": "My Practice",
+    "manage": "Manage",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "emptyTitle": "No videos yet",
+    "emptySubtitle": "Import a video to get started",
+    "importing": "Importing…",
+    "importFailed": "Import Failed",
+    "deleteTitle": "Delete Video",
+    "deleteConfirm": "Delete \"{{name}}\"? Related clips will also be removed.",
+    "bulkDeleteConfirm": "Delete {{count}} selected videos? Related clips will also be removed.",
+    "deleteBtn": "Delete",
+    "renameFailed": "Rename failed, please try again"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "done": "Done",
+    "comingSoon": "Coming soon, stay tuned."
+  },
+  "setup": {
+    "title": "Setup",
+    "mirror": "Mirror",
+    "countdown": "Countdown",
+    "speed": "Speed",
+    "start": "Start Practice"
+  },
+  "player": {
+    "title": "Player",
+    "loading": "Loading…",
+    "coachMark": "Tap to pause / play",
+    "seekBack": "-5s",
+    "seekForward": "+5s",
+    "error": "Error",
+    "videoNotFound": "Video not found",
+    "back": "Back"
+  }
+}
