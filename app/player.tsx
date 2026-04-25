@@ -356,15 +356,18 @@ export default function PlayerScreen() {
         clearTimeout(smSingleTapTimerRef.current);
         smSingleTapTimerRef.current = null;
       }
-      const isLeft = locationX < smTapWidthRef.current / 2;
-      player?.seekBy(isLeft ? -5 : 5);
-      setSmSeekFeedback(isLeft ? 'left' : 'right');
-      smSeekIndicatorOpacity.setValue(1);
-      Animated.timing(smSeekIndicatorOpacity, {
-        toValue: 0,
-        duration: 700,
-        useNativeDriver: true,
-      }).start();
+      const w = smTapWidthRef.current;
+      const isLeft = locationX < w * 2 / 5;
+      const isRight = locationX > w * 3 / 5;
+      if (isLeft || isRight) {
+        player?.seekBy(isLeft ? -5 : 5);
+        smSeekIndicatorOpacity.setValue(0);
+        setSmSeekFeedback(isLeft ? 'left' : 'right');
+        Animated.sequence([
+          Animated.timing(smSeekIndicatorOpacity, { toValue: 1, duration: 80, useNativeDriver: true }),
+          Animated.timing(smSeekIndicatorOpacity, { toValue: 0, duration: 620, useNativeDriver: true }),
+        ]).start(({ finished }) => { if (finished) setSmSeekFeedback(null); });
+      }
       smLastTapTimeRef.current = 0;
     } else {
       smLastTapTimeRef.current = now;
@@ -383,15 +386,18 @@ export default function PlayerScreen() {
         clearTimeout(fsSingleTapTimerRef.current);
         fsSingleTapTimerRef.current = null;
       }
-      const isLeft = locationX < fsTapWidthRef.current / 2;
-      player?.seekBy(isLeft ? -5 : 5);
-      setSeekFeedback(isLeft ? 'left' : 'right');
-      seekIndicatorOpacity.setValue(1);
-      Animated.timing(seekIndicatorOpacity, {
-        toValue: 0,
-        duration: 700,
-        useNativeDriver: true,
-      }).start();
+      const w = fsTapWidthRef.current;
+      const isLeft = locationX < w * 2 / 5;
+      const isRight = locationX > w * 3 / 5;
+      if (isLeft || isRight) {
+        player?.seekBy(isLeft ? -5 : 5);
+        seekIndicatorOpacity.setValue(0);
+        setSeekFeedback(isLeft ? 'left' : 'right');
+        Animated.sequence([
+          Animated.timing(seekIndicatorOpacity, { toValue: 1, duration: 80, useNativeDriver: true }),
+          Animated.timing(seekIndicatorOpacity, { toValue: 0, duration: 620, useNativeDriver: true }),
+        ]).start(({ finished }) => { if (finished) setSeekFeedback(null); });
+      }
       lastTapTimeRef.current = 0;
     } else {
       lastTapTimeRef.current = now;

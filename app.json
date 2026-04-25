@@ -32,7 +32,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "scheme": "dancewithme",
+    "scheme": "dancify",
     "plugins": [
       "expo-router",
       "expo-video",
@@ -54,7 +54,8 @@
       ],
       "expo-localization",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-image"
     ]
   }
 }

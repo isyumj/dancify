@@ -22,9 +22,10 @@ export function usePlayback(
   const loopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCountingDownRef = useRef(false);
 
-  // Apply speed whenever it changes
+  // Apply speed whenever it changes; lock pitch so vocals stay in tune at any rate
   useEffect(() => {
     if (!player) return;
+    player.preservesPitch = true;
     player.playbackRate = speed;
   }, [player, speed]);
 

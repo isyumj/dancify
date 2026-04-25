@@ -40,6 +40,8 @@
     "deselectAll": "Deselect All",
     "emptyTitle": "No videos yet",
     "emptySubtitle": "Import a video to get started",
+    "importFromPhotos": "From Photo Library",
+    "importFromFiles": "From Files",
     "importing": "Importing…",
     "importFailed": "Import Failed",
     "deleteTitle": "Delete Video",
