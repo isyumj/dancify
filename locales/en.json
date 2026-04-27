@@ -44,14 +44,28 @@
     "importFromFiles": "From Files",
     "importing": "Importing…",
     "importFailed": "Import Failed",
+    "notAVideo": "The selected file is not a video. Please choose a video file.",
     "deleteTitle": "Delete Video",
     "deleteConfirm": "Delete \"{{name}}\"? Related clips will also be removed.",
     "bulkDeleteConfirm": "Delete {{count}} selected videos? Related clips will also be removed.",
+    "rename": "Rename",
     "deleteBtn": "Delete",
-    "renameFailed": "Rename failed, please try again"
+    "renameFailed": "Rename failed, please try again",
+    "bulkSelectHint": "Select videos",
+    "bulkSelectedCount": "{{count}} selected"
+  },
+  "permission": {
+    "photosTitle": "Access Photo Library",
+    "photosRationale": "Dancify needs access to your photo library to import dance videos for practice.",
+    "photosDeniedTitle": "Permission Required",
+    "photosDeniedMessage": "Photo library access is disabled. Please enable it in Settings to import videos.",
+    "continue": "Continue",
+    "openSettings": "Open Settings"
   },
   "common": {
     "cancel": "Cancel",
+    "ok": "OK",
+    "save": "Save",
     "done": "Done",
     "comingSoon": "Coming soon, stay tuned."
   },

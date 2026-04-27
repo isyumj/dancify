@@ -1,0 +1,404 @@
+# Dancify — Functional Test Cases Checklist
+App Version: Pre-Release | Platform: iOS (Expo/React Native) | QA Standard: SDET / App Store Submission
+
+================================================================================
+Module 1: App Launch & Initialization
+================================================================================
+
+Happy Path
+----------
+[ ] TC-INIT-01 — Cold launch: App opens without crash. Root layout initializes SQLite DB (dancewithme.db) in WAL mode successfully.
+[ ] TC-INIT-02 — Fonts load: All Ionicons / Feather vector icons render correctly; no missing glyph boxes or placeholder rectangles visible.
+[ ] TC-INIT-03 — i18n initializes: Language detected from device locale on first install; no "translation key fallback" strings (raw keys like `library.import`) visible anywhere in the UI.
+[ ] TC-INIT-04 — Tabs render: Both the "Library" tab and "Profile" tab are accessible; active tab indicator highlights the correct tab.
+[ ] TC-INIT-05 — Re-launch with existing data: Killing and re-opening the app loads all previously imported videos correctly from SQLite.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-INIT-06 — DB migration on update: After an over-the-air update (or fresh build over existing install), existing video records and settings survive. No DB corruption or crash.
+[ ] TC-INIT-07 — Extremely fast repeated launches: Force-quit and relaunch 5 times in rapid succession. App never gets stuck in a blank/frozen state.
+[ ] TC-INIT-08 — Low storage on first launch: With < 100MB of device storage free, app launches without crash. No silent DB write failure.
+[ ] TC-INIT-09 — Device locale unsupported: Set device language to an unsupported locale (e.g., Japanese). App falls back gracefully to English with no raw translation keys displayed.
+
+================================================================================
+Module 2: Onboarding & Language Selection
+================================================================================
+
+Happy Path
+----------
+[ ] TC-LANG-01 — Language modal opens: Tapping the language preference row in the Profile tab navigates to the language selection modal without delay.
+[ ] TC-LANG-02 — Switch EN → ZH: Selecting "简体中文" immediately re-renders all visible UI strings in Chinese. Navigate to Library tab; all labels are in Chinese.
+[ ] TC-LANG-03 — Switch ZH → EN: Selecting "English" immediately re-renders all visible UI strings in English.
+[ ] TC-LANG-04 — Language persists across app kills: After selecting ZH and force-quitting, re-launch shows the app in Chinese (AsyncStorage key `user-language` survives).
+[ ] TC-LANG-05 — Language modal dismissal: Tapping back/dismiss without making a selection does not change the active language.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-LANG-06 — Language change during active import: Switch language while a video is actively compressing in the background. Import completes correctly; progress UI re-renders in the new language without crash.
+[ ] TC-LANG-07 — Language change while player is open: Navigate to player, then navigate to Profile and change language. Return to player — no crash, controls re-render in new language.
+[ ] TC-LANG-08 — AsyncStorage corruption: Simulate a corrupted `user-language` key (e.g., an invalid value). App falls back to device locale or English without crash.
+[ ] TC-LANG-09 — All translation keys are present in both locales: No screen in either EN or ZH shows a raw i18n key string (e.g., `player.speed`). Verify all 74 keys in both en.json and zh.json.
+
+================================================================================
+Module 3: Video Import & Local Storage
+================================================================================
+
+Happy Path
+----------
+[ ] TC-IMP-01 — Import a standard video (≤720p): Select a short (< 30s), 720p or lower video. Import completes without compression step. Video appears in library grid with correct thumbnail and duration badge.
+[ ] TC-IMP-02 — Import a high-res video (>720p): Select a 1080p or 4K video. Progress bar appears on the pending card. After compression, video appears with correct thumbnail and duration.
+[ ] TC-IMP-03 — Thumbnail extraction: Imported video shows a valid thumbnail frame (not a grey/blank placeholder) in the library grid.
+[ ] TC-IMP-04 — Duration badge: Video card shows correct MM:SS duration matching the original file.
+[ ] TC-IMP-05 — Filename auto-populated: Default filename 视频YYYY-MM-DD is assigned correctly with today's date.
+[ ] TC-IMP-06 — Multiple sequential imports: Import 3 videos one after another. All appear correctly in the grid, ordered newest-first.
+[ ] TC-IMP-07 — File stored in correct directory: After import, verify video file exists at FileSystem.documentDirectory/videos/ (no dangling temp paths).
+[ ] TC-IMP-08 — Photo library picker launches: Tapping the import banner presents the native iOS photo library picker.
+[ ] TC-IMP-09 — Picker cancellation: Tapping "Cancel" in the photo picker closes the modal; no pending card or error state appears in the library.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-IMP-10 — Photo library permission denied (first ask): On fresh install, deny photo library access. Verify app does not crash; verify appropriate error/prompt is shown (not a blank screen).
+[ ] TC-IMP-11 — Permission denied, then granted via Settings: Deny permission, then go to iOS Settings → Dancify → Photos → enable "All Photos." Return to app and attempt import. Picker launches successfully.
+[ ] TC-IMP-12 — "Limited Photo Access" (iOS 14+ partial access): Grant "Selected Photos" (limited access). Import picker shows only the selected photos. Importing an allowed video completes normally.
+[ ] TC-IMP-13 — Import a very large video (> 500MB, 4K/60fps): Select a large video file. Compression runs to completion without a memory crash or OOM error. Progress bar advances smoothly.
+[ ] TC-IMP-14 — Import a very short video (< 2s): Import a 1-second clip. App handles edge case duration. Thumbnail extracted. Player opens without crash.
+[ ] TC-IMP-15 — Duplicate filename deduplication: Import the same video twice. Second entry should be named 视频YYYY-MM-DD (2), not silently overwrite.
+[ ] TC-IMP-16 — Background to foreground during compression: Start importing a large video, immediately background the app (home swipe), wait 10s, return to foreground. Compression resumed or completed; progress UI is accurate.
+[ ] TC-IMP-17 — Force quit during active compression: Kill the app mid-compression. Re-launch: no orphaned pending card stuck at a partial progress state. No partial/corrupt file remains in the videos/ directory.
+[ ] TC-IMP-18 — Storage full during import: Simulate near-full device storage (< 50MB free). App does not crash; it either completes with an error message or handles gracefully without leaving orphaned files.
+[ ] TC-IMP-19 — Import two videos simultaneously: Trigger imports back-to-back before the first finishes. Both pending cards show independent progress. Both complete correctly without corrupting each other.
+[ ] TC-IMP-20 — Thumbnail extraction failure: On a video format that may not produce a thumbnail (edge case codec), pending card falls back to a placeholder gracefully; app does not crash.
+
+================================================================================
+Module 4: Video Library Management
+================================================================================
+
+Happy Path
+----------
+[ ] TC-LIB-01 — 2-column grid renders: Library shows all imported videos in a 2-column grid, ordered newest-first.
+[ ] TC-LIB-02 — Empty state UI: On first install (no videos), the empty state prompt to import a video is visible and tappable.
+[ ] TC-LIB-03 — Open video in player: Tapping a video card navigates to the Player screen with the correct video loaded.
+[ ] TC-LIB-04 — Context menu (3-dot): Long-press or tap the 3-dot menu on a video card. Action sheet presents "Rename" and "Delete" options.
+[ ] TC-LIB-05 — Rename — happy path: Open action sheet → Rename → type "My Dance Practice" → confirm. Library card now shows updated name.
+[ ] TC-LIB-06 — Rename strips extension: If filename internally includes .mp4, the rename modal only shows the base name. Saving does not double-append an extension.
+[ ] TC-LIB-07 — Single delete: Delete a single video via the action sheet. Confirmation dialog appears. Confirming removes the card from the grid, deletes from SQLite, and removes the file from disk.
+[ ] TC-LIB-08 — Manage mode enters correctly: Tapping "Manage" switches to multi-select mode. Checkboxes appear on all video cards. "Cancel" button visible.
+[ ] TC-LIB-09 — Select individual videos: In manage mode, tap 3 individual cards. All 3 show a checked state. Bulk action bar shows correct count.
+[ ] TC-LIB-10 — Select All: Tap "Select All". All video cards become selected. Count in bulk action bar matches total video count.
+[ ] TC-LIB-11 — Bulk delete — happy path: Select 2 videos → "Delete" in bulk action bar → confirm. Both cards removed from grid; files deleted from disk; SQLite records deleted.
+[ ] TC-LIB-12 — Cancel manage mode: Enter manage mode, select a few videos, tap "Cancel." Grid returns to normal display; no videos deleted.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-LIB-13 — Rename with empty string: In rename modal, clear all text and attempt to confirm. App should not save an empty filename (either prevent save or show validation error).
+[ ] TC-LIB-14 — Rename with very long string (255+ chars): Enter a 300-character name. App handles it gracefully (truncates display or shows an error).
+[ ] TC-LIB-15 — Rename with special characters: Try "Dance / 2024 <>&". No crash; name saves correctly or shows validation.
+[ ] TC-LIB-16 — Rename to existing name: Rename a video to the exact name of another video already in the library. Deduplication logic runs; result is either blocked or auto-incremented.
+[ ] TC-LIB-17 — Delete video that is currently open in player: Navigate to Player, go back to Library, delete the video. No stale state or crash if player is reloaded.
+[ ] TC-LIB-18 — Bulk delete ALL videos: Select all videos and delete. Library transitions to empty state correctly; no ghost records remain in SQLite.
+[ ] TC-LIB-19 — Grid with 50+ videos: Import or insert enough records to have 50+ items. Grid scrolls smoothly (no jank); no memory warning or crash.
+[ ] TC-LIB-20 — Pending card during manage mode: Begin importing a video, then enter manage mode. Pending card should not be selectable for deletion; or app handles it gracefully.
+[ ] TC-LIB-21 — Action sheet while import is in-progress: Tap 3-dot menu on a completed video while another is still importing. Action sheet presents correctly; both operations are independent.
+
+================================================================================
+Module 5: Video Player — Basic Playback
+================================================================================
+
+Happy Path
+----------
+[ ] TC-PLAY-01 — Player opens with correct video: Tapping a library card opens the Player screen with the correct video title in the header.
+[ ] TC-PLAY-02 — Video loads and autoplays: Video begins playing automatically on open. No indefinite loading spinner.
+[ ] TC-PLAY-03 — Setup sheet on first open: First time opening a video, the SetupSheet modal appears with speed/mirror/countdown options.
+[ ] TC-PLAY-04 — Setup sheet "Start Practice": Selecting settings and tapping "Start Practice" dismisses the sheet and begins playback with selected settings.
+[ ] TC-PLAY-05 — Single tap play/pause: Single tap on the video toggles between play and paused states. Visual feedback (scale animation) plays.
+[ ] TC-PLAY-06 — Progress bar sync: The progress bar advances in sync with video playback.
+[ ] TC-PLAY-07 — Progress bar scrubbing: Dragging the progress bar thumb seeks the video. Video resumes from the new position on release.
+[ ] TC-PLAY-08 — Full-video auto-loop: Video loops back to the beginning upon reaching the end (within 0.6s of end). Playback continues without pause.
+[ ] TC-PLAY-09 — Back navigation: Tapping the back button returns to the Library screen. Player is properly disposed; no lingering audio.
+[ ] TC-PLAY-10 — Screen stays awake: Screen does not dim or auto-lock while video is playing (expo-keep-awake active).
+[ ] TC-PLAY-11 — Duration badge in player header: Player header shows the video's correct MM:SS duration.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-PLAY-12 — Very short video (< 2s) playback: Video plays and loops correctly. Progress bar does not behave erratically on a near-zero duration.
+[ ] TC-PLAY-13 — Video file moved/deleted externally: Open a video after its source file has been removed from the videos/ directory. App shows an error or loading failure instead of crashing.
+[ ] TC-PLAY-14 — Rapid tap play/pause (stress test): Tap the video 20 times in rapid succession. No crash, no frozen player state.
+[ ] TC-PLAY-15 — Coach mark appears once: The "tap to play/pause" coach mark shows on first playback. After dismissal/timeout, it never reappears on subsequent opens (SQLite hasSeenCoachMark flag persists).
+[ ] TC-PLAY-16 — Coach mark does not reappear after app kill: Force-quit and reopen; navigate to the same video. Coach mark is NOT shown again.
+[ ] TC-PLAY-17 — Player settings persisted on re-open: Open a video, change speed to 0.7x and enable mirror. Close player. Reopen the same video. Speed is 0.7x and mirror is enabled (loaded from SQLite).
+[ ] TC-PLAY-18 — Per-video settings isolation: Set Video A to 0.7x + mirror. Open Video B (default settings). Verify Video B is not affected by Video A's settings.
+
+================================================================================
+Module 6: Video Player — Speed Control
+================================================================================
+
+Happy Path
+----------
+[ ] TC-SPD-01 — Default speed is 1.0x: Freshly imported video (not yet opened) defaults to 1.0x speed.
+[ ] TC-SPD-02 — Switch to 0.7x: Tap the 0.7x speed button. Video plays noticeably slower. Audio pitch remains natural (not robotic/chipmunk).
+[ ] TC-SPD-03 — Switch to 0.8x: Test 0.8x similarly.
+[ ] TC-SPD-04 — Switch to 0.9x: Test 0.9x similarly.
+[ ] TC-SPD-05 — Return to 1.0x: After slowing down, tap 1.0x. Video returns to normal speed immediately.
+[ ] TC-SPD-06 — Speed persists per video: Set speed to 0.8x for a video. Navigate away and return. Speed is still 0.8x.
+[ ] TC-SPD-07 — Speed change while paused: Change speed while video is paused. On next play, video plays at the new speed.
+[ ] TC-SPD-08 — Active speed button is visually highlighted: The currently selected speed button is visually differentiated from the unselected ones.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-SPD-09 — Rapid speed toggling: Toggle through all speed options (0.7→0.8→0.9→1.0→0.7→...) 15 times rapidly. No crash, no audio desync, no video freeze.
+[ ] TC-SPD-10 — Speed change during countdown: Change speed while the 3-2-1 countdown is active. Countdown completes; playback resumes at the newly selected speed.
+[ ] TC-SPD-11 — Speed change at A-B loop boundary: Set A-B loop, then change speed mid-loop. Next loop restart honors the new speed correctly.
+
+================================================================================
+Module 7: Video Player — Mirror Mode
+================================================================================
+
+Happy Path
+----------
+[ ] TC-MIR-01 — Enable mirror: Tap the mirror toggle. Video is horizontally flipped (left/right inverted) via scaleX: -1.
+[ ] TC-MIR-02 — Disable mirror: Tap mirror toggle again. Video returns to original orientation.
+[ ] TC-MIR-03 — Mirror state is visually correct: Text overlaid in video (if any) appears reversed when mirrored — confirming the transform is applied to the video, not just a UI overlay.
+[ ] TC-MIR-04 — Mirror persists per video: Enable mirror, close player, reopen. Mirror is still enabled.
+[ ] TC-MIR-05 — Mirror in fullscreen: Enable mirror, enter fullscreen. Mirror effect is maintained in fullscreen mode.
+[ ] TC-MIR-06 — Mirror toggle in SetupSheet: Toggling mirror in the initial setup sheet correctly initializes the player in mirrored state.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-MIR-07 — Rapid mirror toggling: Toggle mirror 20 times rapidly. No render glitch, no crash, no frozen frame.
+[ ] TC-MIR-08 — Mirror + fullscreen + rotation: Enable mirror, enter fullscreen, rotate device (if rotation is supported). Mirror state is preserved and video renders correctly.
+
+================================================================================
+Module 8: Video Player — Countdown Feature
+================================================================================
+
+Happy Path
+----------
+[ ] TC-CDN-01 — Enable countdown: Toggle countdown in PlayerControls. Toggle shows "on" state.
+[ ] TC-CDN-02 — Countdown fires on loop restart: With A-B loop and countdown enabled, at the loop boundary: video pauses, 3→2→1 visual overlay appears with audio ticks, then playback resumes from loopStart.
+[ ] TC-CDN-03 — Audio countdown plays at audible volume: The countdown.m4a sound is clearly audible during the countdown phase.
+[ ] TC-CDN-04 — Video muted during countdown: While countdown plays, the video audio is muted. After countdown, video audio is restored.
+[ ] TC-CDN-05 — Countdown fires with full-video loop: With no A-B loop set but countdown enabled, at end-of-video loop boundary, countdown fires before restart.
+[ ] TC-CDN-06 — Visual 3→2→1 overlay: Numbers 3, 2, 1 appear sequentially on screen at ~1-second intervals and disappear when playback resumes.
+[ ] TC-CDN-07 — Countdown persists per video: Enable countdown, close and reopen. Countdown is still enabled.
+[ ] TC-CDN-08 — Disable countdown: Toggle off. At loop boundary, video restarts immediately without countdown.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-CDN-09 — Countdown with phone in Silent Mode: Toggle the hardware silent switch ON. Countdown should still play audio (requires playsInSilentMode: true in the audio session). Verify audio is audible even in silent mode.
+[ ] TC-CDN-10 — Countdown after audio session interruption (phone call): Start playback with countdown enabled. Receive a phone call, answer it, hang up. Return to app. Loop fires → countdown plays correctly; audio is restored.
+[ ] TC-CDN-11 — Countdown after entering fullscreen: Play in small screen, enter fullscreen, wait for loop boundary. Countdown fires and completes without audio failure or hang.
+[ ] TC-CDN-12 — Rapidly disable/enable countdown during countdown: Toggle countdown off and on while the 3-2-1 is actively counting. App does not get stuck in a muted state; no crash.
+[ ] TC-CDN-13 — Safety timeout fires: Simulate a scenario where didJustFinish event from the countdown audio player never fires (pathological case). Verify the 4.5-second safety timeout triggers, unmutes video, and resumes playback.
+[ ] TC-CDN-14 — Countdown with a very short A-B loop (< 4s): Set A-B loop to a 2-second segment, enable 3s countdown. Countdown is longer than the loop. Verify no infinite countdown loop or hang.
+[ ] TC-CDN-15 — Countdown + speed change simultaneously: Change speed exactly as countdown fires. Countdown completes; playback resumes at the correct new speed.
+
+================================================================================
+Module 9: Video Player — Seek Gestures
+================================================================================
+
+Happy Path
+----------
+[ ] TC-SEEK-01 — Double-tap right side: Double-tap the right half of the video. Video seeks forward by 5 seconds. Visual "+5s" indicator appears.
+[ ] TC-SEEK-02 — Double-tap left side: Double-tap the left half of the video. Video seeks back by 5 seconds. Visual "−5s" indicator appears.
+[ ] TC-SEEK-03 — Seek while paused: Double-tap while video is paused. Video seeks; remains paused at the new position.
+[ ] TC-SEEK-04 — Seek while playing: Double-tap while video plays. Playback continues from the new position without pause.
+[ ] TC-SEEK-05 — Fullscreen seek gestures: Both ±5s double-tap gestures work correctly in fullscreen mode.
+[ ] TC-SEEK-06 — Fullscreen onboarding hint: First time entering fullscreen, ripple animations appear on both sides hinting double-tap seek. Auto-dismisses after 3s.
+[ ] TC-SEEK-07 — Fullscreen onboarding shown once: Onboarding appears only on the first fullscreen entry per device (SQLite hasSeenFsOnboarding flag).
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-SEEK-08 — Seek past end of video: Double-tap forward (+5s) when within 5s of the end. Video does not crash; it clamps to the end or loops.
+[ ] TC-SEEK-09 — Seek past beginning of video: Double-tap backward (−5s) when within 5s of the beginning. Video clamps to position 0 or plays from start.
+[ ] TC-SEEK-10 — Single tap vs. double tap discrimination: A single tap only plays/pauses — it never triggers a seek. A double tap never triggers play/pause. No gesture conflict.
+[ ] TC-SEEK-11 — Seek during countdown: Double-tap while countdown is active. Behavior is graceful (countdown either continues or is canceled predictably). App does not crash.
+[ ] TC-SEEK-12 — Rapid alternating double-taps: Quickly alternate double-tapping left and right ~10 times. No crash, no negative timestamp, no stuck player.
+
+================================================================================
+Module 10: Video Player — A-B Loop & Segments
+================================================================================
+
+Happy Path
+----------
+[ ] TC-LOOP-01 — Set Loop Start (A): Tap the A-point marker at current playback position. Loop start indicator appears on SegmentBar.
+[ ] TC-LOOP-02 — Set Loop End (B): After setting A, tap the B-point marker. Loop region (A→B) is highlighted on the SegmentBar.
+[ ] TC-LOOP-03 — Playback loops at B: Video plays to B boundary and restarts from A automatically (with or without countdown depending on setting).
+[ ] TC-LOOP-04 — Clear loop: Tap the clear-loop control. Loop region disappears from SegmentBar; video returns to full-video loop mode.
+[ ] TC-LOOP-05 — SegmentBar visualization: The A-B region is correctly highlighted on the progress bar proportional to the video duration.
+[ ] TC-LOOP-06 — Loop with countdown: A-B loop fires correctly when countdown is enabled (covered in CDN module; cross-check here).
+[ ] TC-LOOP-07 — Saved segments: Segments saved via insertSegment persist across player closes; confirmed via useSegments reload on open.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-LOOP-08 — Set B before A (reversed points): Set the B-point at a time earlier than the current A-point. App handles this gracefully (swap A/B, error state, or discard).
+[ ] TC-LOOP-09 — A and B at same timestamp: Set A and B to the exact same time. App does not hang in an infinite immediate-restart loop.
+[ ] TC-LOOP-10 — Very short loop (< 0.5s): Set a 0.3-second A-B segment. 200ms polling tick handles this without CPU-spinning or crash.
+[ ] TC-LOOP-11 — Set A-B loop near end of video: Set A at 95% and B at 99% of duration. Loop fires correctly; does not conflict with the full-video loop trigger (within 0.6s of end).
+[ ] TC-LOOP-12 — Seek outside A-B region while looping: Manually scrub progress bar to a position outside the A-B region. Loop behavior after scrub is predictable (either re-enforces loop or disables until re-enabled).
+[ ] TC-LOOP-13 — Change speed mid-loop: Set A-B loop, change speed while loop is running. Loop continues with new speed; no duplicate restart events.
+
+================================================================================
+Module 11: Video Player — Fullscreen Mode
+================================================================================
+
+Happy Path
+----------
+[ ] TC-FS-01 — Enter fullscreen: Tap the fullscreen button. Fullscreen modal opens. Video fills the screen.
+[ ] TC-FS-02 — Fullscreen playback continues: Video keeps playing (or stays paused) when transitioning to fullscreen without interruption.
+[ ] TC-FS-03 — Mirror state in fullscreen: If mirror was enabled in small screen, fullscreen also shows mirrored video.
+[ ] TC-FS-04 — Progress bar in fullscreen: Bottom progress bar in fullscreen is accurate and scrubbable.
+[ ] TC-FS-05 — Exit fullscreen: Tap the close/exit button. Returns to small-screen player; video continues from the same position.
+[ ] TC-FS-06 — Play/pause in fullscreen: Single-tap video in fullscreen toggles play/pause.
+[ ] TC-FS-07 — Double-tap seek in fullscreen: ±5s double-tap seek works correctly in fullscreen.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-FS-08 — Rapid enter/exit fullscreen: Toggle fullscreen mode 10 times in rapid succession. No crash, no blank video, no stuck modal.
+[ ] TC-FS-09 — Fullscreen + home button: Enter fullscreen, press home button. Re-enter app; fullscreen is either still showing or has gracefully dismissed. No crash.
+[ ] TC-FS-10 — Fullscreen + incoming call: Enter fullscreen, receive a phone call. Call handling works normally. After call ends, app returns to a playable state.
+[ ] TC-FS-11 — Fullscreen + device rotation (if supported): Rotate device to landscape while in fullscreen. Video scales correctly; UI elements remain accessible.
+[ ] TC-FS-12 — Fullscreen audio session conflict: Enter fullscreen (which may disrupt the audio session per code comments). Countdown audio still plays correctly after first fullscreen entry.
+
+================================================================================
+Module 12: Profile Screen & Storage Management
+================================================================================
+
+Happy Path
+----------
+[ ] TC-PROF-01 — Storage size displays: Profile → Storage section shows the total size of the videos/ directory in human-readable format (e.g., "42.3 MB").
+[ ] TC-PROF-02 — Cache size displays: Cache directory size is shown alongside the Clear button.
+[ ] TC-PROF-03 — Clear cache: Tap "Clear" for cache. Cache size resets to ~0. Videos in library are unaffected.
+[ ] TC-PROF-04 — Language row navigates to modal: Tapping the language preference row opens the language selection modal.
+[ ] TC-PROF-05 — Privacy Policy row: Tapping "Privacy Policy" shows a "coming soon" state or navigates correctly (no crash).
+[ ] TC-PROF-06 — Feedback row: Tapping "Feedback" shows a "coming soon" state or navigates correctly (no crash).
+[ ] TC-PROF-07 — Storage updates after import: Import a video, then navigate to Profile. Storage size has increased to reflect the new file.
+[ ] TC-PROF-08 — Storage updates after delete: Delete a video, then navigate to Profile. Storage size has decreased.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-PROF-09 — No videos imported: Profile storage section shows "0 B" or "0 MB" gracefully (no NaN, no crash).
+[ ] TC-PROF-10 — Clear cache while video is playing: Navigate to Profile and clear cache while the player is running in the background stack. No crash; no video playback interruption.
+[ ] TC-PROF-11 — Clear cache with no cache: Tap "Clear" when cache is already empty. No crash; no negative size shown.
+[ ] TC-PROF-12 — Storage calculation with very large library (1GB+): With many large video files, storage calculation does not hang the UI thread or crash.
+
+================================================================================
+Module 13: System Interruptions & App Lifecycle
+================================================================================
+
+Happy Path
+----------
+[ ] TC-LIFE-01 — Background while playing: Swipe the app to the background while video is playing. Return to foreground; playback resumes (or is paused as expected by iOS).
+[ ] TC-LIFE-02 — Lock screen while playing: Lock the device (sleep button) while video plays. Unlock; app is intact. Video may be paused (acceptable iOS behavior).
+[ ] TC-LIFE-03 — Lock screen while importing: Lock device during a compression job. Unlock; import has either completed or resumes correctly. No orphaned pending card.
+[ ] TC-LIFE-04 — Background while importing: Swipe to background during a large video compression. Return to foreground; import state is correctly reflected in the UI.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-LIFE-05 — Incoming phone call during playback: Play a video at full volume. Receive a phone call. iOS audio focus is handled; video pauses or ducks. After the call, app does not crash or produce garbled audio.
+[ ] TC-LIFE-06 — Incoming phone call during countdown: Receive a call exactly as the 3-2-1 countdown fires. After call ends, countdown audio resumes or the safety timeout handles the stuck state. No permanent mute.
+[ ] TC-LIFE-07 — Siri activation during playback: Say "Hey Siri" while the video is playing. Siri overlay appears. Dismiss Siri. Video playback is not in a broken state.
+[ ] TC-LIFE-08 — AirPlay / audio output device change: Connect Bluetooth headphones while playing. Disconnect headphones. App does not crash; audio output switches gracefully.
+[ ] TC-LIFE-09 — Other apps taking audio focus (Spotify, podcast): Start Spotify or another audio app, then return to Dancify. Video audio either resumes or the user can manually play without crash.
+[ ] TC-LIFE-10 — Control Center media controls: Swipe to Control Center while playing. Play/pause from Control Center (if the app registers as an audio session). Verify behavior is consistent.
+[ ] TC-LIFE-11 — Low memory warning: Open a large video, trigger memory pressure (run other memory-intensive apps). App survives with applicationDidReceiveMemoryWarning; no crash.
+[ ] TC-LIFE-12 — Rapid app switching: Switch between Dancify and another app 10 times in 30 seconds. No audio leak, no ghost playback, no crash.
+[ ] TC-LIFE-13 — Kill during DB write: Force-quit the app exactly while a video rename or settings save is in progress. Re-launch; SQLite WAL mode ensures DB is not corrupted.
+[ ] TC-LIFE-14 — Background app refresh disabled: With "Background App Refresh" disabled for Dancify in iOS Settings, large import is triggered. Verify behavior when app is backgrounded (compression may pause; no crash on return).
+
+================================================================================
+Module 14: Localization — String & UI Validation
+================================================================================
+
+Happy Path
+----------
+[ ] TC-I18N-01 — All library screen strings in EN: Empty state, Import banner, Manage button, Cancel button, grid card labels — all render correctly in English.
+[ ] TC-I18N-02 — All library screen strings in ZH: Same as above, all strings correctly display Simplified Chinese.
+[ ] TC-I18N-03 — Player screen strings in EN: Header title (video filename), loading text, coach mark hints — all in English.
+[ ] TC-I18N-04 — Player screen strings in ZH: All player-facing strings correctly in Chinese.
+[ ] TC-I18N-05 — Profile screen strings in EN: Section headers (Storage, Preferences, About), row labels, value fields — all in English.
+[ ] TC-I18N-06 — Profile screen strings in ZH: All Profile strings correctly in Chinese.
+[ ] TC-I18N-07 — SetupSheet strings in both languages: Speed labels, mirror label, countdown label, "Start Practice" button — verified in both EN and ZH.
+[ ] TC-I18N-08 — Tab bar labels in both languages: Confirm tab bar labels ("Library"/"资料库", "Profile"/"我") render in the active language.
+[ ] TC-I18N-09 — VideoActionSheet strings: "Rename", "Delete", "Cancel" — verified in both EN and ZH.
+[ ] TC-I18N-10 — Confirmation dialogs: Delete confirmation alert title and button labels — verified in both languages.
+
+Edge Cases & Negative Paths
+-----------------------------
+[ ] TC-I18N-11 — No text truncation in ZH: Chinese characters are generally wider relative to the container. Check all UI elements in ZH for text truncation, overflow, or layout breaks.
+[ ] TC-I18N-12 — Dynamic content + translated strings: Video filenames are user-generated content mixed into translated templates. Verify no layout break when a long filename is displayed alongside a translated label.
+[ ] TC-I18N-13 — Language change does not reset player state: Changing language from Profile while holding a specific player state (speed, loop) does not reset those settings.
+[ ] TC-I18N-14 — RTL layout (not supported but should not break): Briefly verify that no hardcoded left/right layout causes obvious breaks if the OS ever renders an RTL component (defensive check).
+
+================================================================================
+Module 15: Performance & Resource Limits
+================================================================================
+
+[ ] TC-PERF-01 — Cold launch time: App fully interactive within 3 seconds on a supported device (iPhone 12 or newer).
+[ ] TC-PERF-02 — Library scroll with 30+ videos: Scrolling the 2-column grid with 30+ videos maintains 60fps; no dropped frames or jank.
+[ ] TC-PERF-03 — Player CPU during slow-mo: Playback at 0.7x speed does not cause excessive CPU usage. Device does not overheat in a 10-minute practice session.
+[ ] TC-PERF-04 — Memory during player session: Open player, run for 5 minutes with looping and countdown active. No memory growth trend (no leak); Instruments memory < 300MB.
+[ ] TC-PERF-05 — Import a 4K 60fps video (> 2GB): Start import. Compression runs. App remains responsive (UI is not blocked). Progress bar updates smoothly.
+[ ] TC-PERF-06 — Rapid mirror + speed toggling: Toggle mirror and speed buttons alternately 30 times in 10 seconds. No frame drop on the video; no crash.
+[ ] TC-PERF-07 — 200ms polling loop overhead: A-B loop with countdown enabled running for 10 minutes. No observable CPU spike from the polling interval.
+[ ] TC-PERF-08 — SQLite performance with many settings entries: After opening 50 different videos (50 videoSettings_N keys), getSetting/setSetting operations remain fast (< 50ms).
+[ ] TC-PERF-09 — Reanimated worklet performance: Progress bar drag gesture is smooth at 60fps with no jank on mid-range hardware (iPhone XS/11).
+[ ] TC-PERF-10 — Thumbnail grid memory: 50 thumbnails loaded in the grid. Memory footprint is reasonable; no OOM crash from unrecycled image memory.
+
+================================================================================
+Module 16: Accessibility & Visual Integrity
+================================================================================
+
+[ ] TC-A11Y-01 — Dynamic Type (Large Text): Set iOS accessibility to "Larger Text." All UI text scales or is bounded correctly; no layout overlap or truncation that makes the app unusable.
+[ ] TC-A11Y-02 — Dark Mode: If the app supports or responds to dark mode, all screens are legible. If hardcoded to a theme, the UI is stable in both light and dark system settings.
+[ ] TC-A11Y-03 — Bold Text accessibility: Enable "Bold Text" in iOS Accessibility. No UI element breaks layout.
+[ ] TC-A11Y-04 — Reduce Motion: Enable "Reduce Motion" in iOS Accessibility. The scale-animation on play/pause tap and the coach mark ripple animations should either reduce or be replaced with a simpler transition (no crash).
+[ ] TC-A11Y-05 — iPhone SE (small screen) layout: Run on iPhone SE (4.7" display). All controls are accessible; no elements are cut off or unreachable by thumb.
+[ ] TC-A11Y-06 — iPhone Pro Max (large screen) layout: Run on a 6.9" display. Layout scales up correctly; no oversized elements or awkward empty space.
+[ ] TC-A11Y-07 — Safe area insets: On devices with Dynamic Island (iPhone 14 Pro+), the player header, tab bar, and all interactive controls respect safe area insets and are not obscured.
+[ ] TC-A11Y-08 — Status bar legibility: Status bar text (time, battery) is legible against the app's background on all screens.
+
+================================================================================
+Module 17: App Store Review Readiness (Sanity Checks)
+================================================================================
+
+[ ] TC-ASR-01 — Privacy manifest & permissions: NSPhotoLibraryUsageDescription is present in app.json/Info.plist with a user-facing description. No camera permission is requested (camera is explicitly disabled in expo-image-picker config).
+[ ] TC-ASR-02 — No unnecessary permission requests: App does not prompt for microphone, contacts, location, or any other unrelated permission.
+[ ] TC-ASR-03 — No crash on fresh install (no prior data): Install on a wiped device. All screens render correctly; no crash on first launch, first import, first player open.
+[ ] TC-ASR-04 — No third-party analytics / tracking SDKs: Confirm no ad SDKs or tracking libraries are bundled (check package.json). If any are present, verify ATT prompt is implemented.
+[ ] TC-ASR-05 — No adult / inappropriate content: App content is all user-provided dance videos; no stock content is bundled.
+[ ] TC-ASR-06 — No broken "coming soon" links: Verify "Privacy Policy" and "Feedback" rows either navigate to real content or show a clear in-app placeholder. They must not 404 or crash.
+[ ] TC-ASR-07 — App name and icon are consistent: App name "Dancify" and icon match what is set in app.json. Tapping the icon on the home screen shows the correct name.
+[ ] TC-ASR-08 — Runs on minimum deployment target: Verify the app runs on the minimum iOS version specified in app.json (test on oldest supported device/simulator).
+[ ] TC-ASR-09 — No hardcoded IP addresses or debug endpoints: No localhost, 192.168.x.x, or http:// addresses in production code paths.
+[ ] TC-ASR-10 — No visible console/debug overlays: No __DEV__ debug banners, Flipper overlays, or Expo DevTools UI visible in the production build.
+
+================================================================================
+SUMMARY
+================================================================================
+
+Total Test Cases: 148
+
+Priority for App Store submission:
+  - TC-ASR-01 through TC-ASR-10  (App Store Review Readiness)
+  - TC-IMP-10 through TC-IMP-12  (Photo Permission edge cases)
+  - TC-CDN-09 through TC-CDN-13  (Countdown + iOS audio session)
+  - TC-LIFE-05 through TC-LIFE-09 (System interruptions)
+
+Module Breakdown:
+  Module 1  — App Launch & Initialization          9 cases
+  Module 2  — Onboarding & Language Selection       9 cases
+  Module 3  — Video Import & Local Storage         20 cases
+  Module 4  — Video Library Management             21 cases
+  Module 5  — Video Player: Basic Playback         18 cases
+  Module 6  — Video Player: Speed Control          11 cases
+  Module 7  — Video Player: Mirror Mode             8 cases
+  Module 8  — Video Player: Countdown              15 cases
+  Module 9  — Video Player: Seek Gestures          12 cases
+  Module 10 — Video Player: A-B Loop & Segments   13 cases
+  Module 11 — Video Player: Fullscreen Mode        12 cases
+  Module 12 — Profile & Storage Management        12 cases
+  Module 13 — System Interruptions & App Lifecycle 14 cases
+  Module 14 — Localization                         14 cases
+  Module 15 — Performance & Resource Limits        10 cases
+  Module 16 — Accessibility & Visual Integrity      8 cases
+  Module 17 — App Store Review Readiness           10 cases

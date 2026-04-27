@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   visible: boolean;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function RenameModal({ visible, currentName, onConfirm, onCancel }: Props) {
+  const { t } = useTranslation();
   const [value, setValue] = useState(currentName);
   const inputRef = useRef<TextInput>(null);
 
@@ -42,9 +44,9 @@ export function RenameModal({ visible, currentName, onConfirm, onCancel }: Props
         <View style={styles.sheet}>
           <View style={styles.titleRow}>
             <Pressable onPress={onCancel} hitSlop={12}>
-              <Text style={styles.cancelText}>取消</Text>
+              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
             </Pressable>
-            <Text style={styles.title}>重命名</Text>
+            <Text style={styles.title}>{t('library.rename')}</Text>
             <View style={styles.titleSpacer} />
           </View>
 
@@ -65,7 +67,7 @@ export function RenameModal({ visible, currentName, onConfirm, onCancel }: Props
             onPress={() => trimmed && onConfirm(trimmed)}
             disabled={!trimmed}
           >
-            <Text style={styles.confirmBtnText}>保存</Text>
+            <Text style={styles.confirmBtnText}>{t('common.save')}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -99,11 +101,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-  titleSpacer: { width: 40 },
+  titleSpacer: { width: 60 },
   cancelText: {
     color: '#888',
     fontSize: 15,
-    width: 40,
+    width: 60,
   },
   input: {
     backgroundColor: '#1e1e1e',

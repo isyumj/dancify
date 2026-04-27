@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Video } from '../types';
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function VideoActionSheet({ video, onRename, onDelete, onClose }: Props) {
+  const { t } = useTranslation();
   const displayName = video?.filename.replace(/\.[^.]+$/, '') ?? '';
 
   return (
@@ -44,17 +46,17 @@ export function VideoActionSheet({ video, onRename, onDelete, onClose }: Props) 
           {/* 操作列表 */}
           <Pressable style={styles.action} onPress={onRename}>
             <Feather name="edit-2" size={20} color="#ccc" />
-            <Text style={styles.actionText}>重命名</Text>
+            <Text style={styles.actionText} numberOfLines={1}>{t('library.rename')}</Text>
           </Pressable>
 
           <Pressable style={styles.action} onPress={onDelete}>
             <Feather name="trash-2" size={20} color="#f87171" />
-            <Text style={[styles.actionText, styles.actionTextDanger]}>删除</Text>
+            <Text style={[styles.actionText, styles.actionTextDanger]} numberOfLines={1}>{t('library.deleteBtn')}</Text>
           </Pressable>
 
           {/* 取消 */}
           <Pressable style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelText}>取消</Text>
+            <Text style={styles.cancelText} numberOfLines={1}>{t('common.cancel')}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

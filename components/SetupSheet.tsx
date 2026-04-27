@@ -47,7 +47,7 @@ export function SetupSheet({ visible, onDone, onCancel }: Props) {
 
           {/* Speed */}
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t('setup.speed')}</Text>
+            <Text style={styles.rowLabel} numberOfLines={1}>{t('setup.speed')}</Text>
             <View style={styles.segmented}>
               {SPEEDS.map((s) => (
                 <Pressable
@@ -65,7 +65,7 @@ export function SetupSheet({ visible, onDone, onCancel }: Props) {
 
           {/* Mirror */}
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t('setup.mirror')}</Text>
+            <Text style={styles.rowLabel} numberOfLines={1}>{t('setup.mirror')}</Text>
             <Switch
               value={isMirror}
               onValueChange={toggleMirror}
@@ -76,7 +76,7 @@ export function SetupSheet({ visible, onDone, onCancel }: Props) {
 
           {/* Countdown */}
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t('setup.countdown')}</Text>
+            <Text style={styles.rowLabel} numberOfLines={1}>{t('setup.countdown')}</Text>
             <Switch
               value={isCountdownEnabled}
               onValueChange={toggleCountdown}
@@ -86,7 +86,7 @@ export function SetupSheet({ visible, onDone, onCancel }: Props) {
           </View>
 
           <Pressable style={styles.doneBtn} onPress={onDone}>
-            <Text style={styles.doneBtnText}>{t('setup.start')}</Text>
+            <Text style={styles.doneBtnText} numberOfLines={1}>{t('setup.start')}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

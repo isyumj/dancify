@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   visible: boolean;
@@ -24,6 +25,7 @@ export function BulkActionBar({
   onSelectAll,
   onDelete,
 }: Props) {
+  const { t } = useTranslation();
   const slideAnim = useRef(new Animated.Value(100)).current;
   const insets = useSafeAreaInsets();
 
@@ -46,7 +48,7 @@ export function BulkActionBar({
     >
       <View style={styles.bar}>
         <Text style={styles.countText}>
-          {selectedCount > 0 ? `已选 ${selectedCount} 个` : '请选择视频'}
+          {selectedCount > 0 ? t('library.bulkSelectedCount', { count: selectedCount }) : t('library.bulkSelectHint')}
         </Text>
 
         <View style={styles.actions}>

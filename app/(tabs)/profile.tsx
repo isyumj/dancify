@@ -125,7 +125,7 @@ export default function ProfileScreen() {
               {clearing ? (
                 <ActivityIndicator size="small" color="#FF453A" />
               ) : (
-                <Text style={styles.clearBtnText}>{t('profile.storage.clearBtn')}</Text>
+                <Text style={styles.clearBtnText} numberOfLines={1}>{t('profile.storage.clearBtn')}</Text>
               )}
             </Pressable>
           </View>

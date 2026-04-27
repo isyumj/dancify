@@ -56,9 +56,11 @@ export default function PlayerScreen() {
   const fsBarWidthRef = useRef(1);
   const fsDragging = useRef(false);
   const fsFillAnim = useRef(new Animated.Value(0)).current;
+  const fsFillInterp = useRef(fsFillAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })).current;
   const smBarWidthRef = useRef(1);
   const smDragging = useRef(false);
   const smFillAnim = useRef(new Animated.Value(0)).current;
+  const smFillInterp = useRef(smFillAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })).current;
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
   const { t } = useTranslation();
@@ -91,6 +93,10 @@ export default function PlayerScreen() {
   const rippleAnimLeftRef = useRef<Animated.CompositeAnimation | null>(null);
   const rippleAnimRightRef = useRef<Animated.CompositeAnimation | null>(null);
 
+  // Double-tap debounce (small screen — ignore double-tap, don't seek)
+  const smLastTapTimeRef = useRef<number>(0);
+  const smSingleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Double-tap seek (fullscreen)
   const lastTapTimeRef = useRef<number>(0);
   const fsTapWidthRef = useRef<number>(1);
@@ -98,12 +104,6 @@ export default function PlayerScreen() {
   const seekIndicatorOpacity = useRef(new Animated.Value(0)).current;
   const [seekFeedback, setSeekFeedback] = useState<'left' | 'right' | null>(null);
 
-  // Double-tap seek (small screen)
-  const smLastTapTimeRef = useRef<number>(0);
-  const smTapWidthRef = useRef<number>(1);
-  const smSingleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const smSeekIndicatorOpacity = useRef(new Animated.Value(0)).current;
-  const [smSeekFeedback, setSmSeekFeedback] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => {
     if (tempPath && filenameParam) {
@@ -348,25 +348,13 @@ export default function PlayerScreen() {
     setSetupVisible(false);
   };
 
-  const handleSmTap = useCallback((locationX: number) => {
+  const handleSmTap = useCallback(() => {
     if (showCoachMark) dismissCoachMark();
     const now = Date.now();
     if (now - smLastTapTimeRef.current < 300) {
       if (smSingleTapTimerRef.current) {
         clearTimeout(smSingleTapTimerRef.current);
         smSingleTapTimerRef.current = null;
-      }
-      const w = smTapWidthRef.current;
-      const isLeft = locationX < w * 2 / 5;
-      const isRight = locationX > w * 3 / 5;
-      if (isLeft || isRight) {
-        player?.seekBy(isLeft ? -5 : 5);
-        smSeekIndicatorOpacity.setValue(0);
-        setSmSeekFeedback(isLeft ? 'left' : 'right');
-        Animated.sequence([
-          Animated.timing(smSeekIndicatorOpacity, { toValue: 1, duration: 80, useNativeDriver: true }),
-          Animated.timing(smSeekIndicatorOpacity, { toValue: 0, duration: 620, useNativeDriver: true }),
-        ]).start(({ finished }) => { if (finished) setSmSeekFeedback(null); });
       }
       smLastTapTimeRef.current = 0;
     } else {
@@ -376,7 +364,7 @@ export default function PlayerScreen() {
         handleVideoTap();
       }, 300);
     }
-  }, [player, smSeekIndicatorOpacity, handleVideoTap, showCoachMark, dismissCoachMark]);
+  }, [handleVideoTap, showCoachMark, dismissCoachMark]);
 
   const handleFsTap = useCallback((locationX: number) => {
     const now = Date.now();
@@ -465,29 +453,8 @@ export default function PlayerScreen() {
         {!isFullscreen && (
           <Pressable
             style={StyleSheet.absoluteFill}
-            onLayout={(e) => { smTapWidthRef.current = e.nativeEvent.layout.width; }}
-            onPress={(e) => handleSmTap(e.nativeEvent.locationX)}
+            onPress={handleSmTap}
           />
-        )}
-        {/* 小屏双击 seek 提示 */}
-        {smSeekFeedback && (
-          <Animated.View
-            style={[
-              styles.fsSeekIndicator,
-              smSeekFeedback === 'left' ? styles.fsSeekLeft : styles.fsSeekRight,
-              { opacity: smSeekIndicatorOpacity },
-            ]}
-            pointerEvents="none"
-          >
-            <Ionicons
-              name={smSeekFeedback === 'left' ? 'play-back' : 'play-forward'}
-              size={26}
-              color="#fff"
-            />
-            <Text style={styles.fsSeekText}>
-              {smSeekFeedback === 'left' ? t('player.seekBack') : t('player.seekForward')}
-            </Text>
-          </Animated.View>
         )}
         {/* 新手引导提示 */}
         {showCoachMark && (
@@ -534,28 +501,8 @@ export default function PlayerScreen() {
         onResponderTerminationRequest={() => false}
       >
         <View style={styles.smProgressTrack}>
-          <Animated.View
-            style={[
-              styles.smProgressFill,
-              {
-                width: smFillAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.smProgressThumb,
-              {
-                left: smFillAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
-          />
+          <Animated.View style={[styles.smProgressFill, { width: smFillInterp }]} />
+          <Animated.View style={[styles.smProgressThumb, { left: smFillInterp }]} />
         </View>
       </View>
 
@@ -688,17 +635,7 @@ export default function PlayerScreen() {
               onResponderTerminationRequest={() => false}
             >
               <View style={styles.fsProgressTrack}>
-                <Animated.View
-                  style={[
-                    styles.fsProgressFill,
-                    {
-                      width: fsFillAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0%', '100%'],
-                      }),
-                    },
-                  ]}
-                />
+                <Animated.View style={[styles.fsProgressFill, { width: fsFillInterp }]} />
               </View>
             </View>
 

@@ -71,7 +71,7 @@ export function ImportActionSheet({ visible, onSelectPhotos, onSelectFiles, onCl
               <View style={styles.iconWrap}>
                 <Feather name="image" size={20} color="#ccc" />
               </View>
-              <Text style={styles.actionText}>{t('library.importFromPhotos')}</Text>
+              <Text style={styles.actionText} numberOfLines={1}>{t('library.importFromPhotos')}</Text>
             </Pressable>
 
             <View style={styles.divider} />
@@ -80,11 +80,11 @@ export function ImportActionSheet({ visible, onSelectPhotos, onSelectFiles, onCl
               <View style={styles.iconWrap}>
                 <Feather name="folder" size={20} color="#ccc" />
               </View>
-              <Text style={styles.actionText}>{t('library.importFromFiles')}</Text>
+              <Text style={styles.actionText} numberOfLines={1}>{t('library.importFromFiles')}</Text>
             </Pressable>
 
             <Pressable style={styles.cancelBtn} onPress={() => dismiss()}>
-              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
+              <Text style={styles.cancelText} numberOfLines={1}>{t('common.cancel')}</Text>
             </Pressable>
           </Pressable>
         </Animated.View>

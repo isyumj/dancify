@@ -35,7 +35,7 @@ export function PlayerControls() {
       <View style={styles.switchGroup}>
         {/* Mirror row */}
         <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>{t('setup.mirror')}</Text>
+          <Text style={styles.switchLabel} numberOfLines={1}>{t('setup.mirror')}</Text>
           <Switch
             value={isMirror}
             onValueChange={toggleMirror}
@@ -46,7 +46,7 @@ export function PlayerControls() {
 
         {/* Countdown row */}
         <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>{t('setup.countdown')}</Text>
+          <Text style={styles.switchLabel} numberOfLines={1}>{t('setup.countdown')}</Text>
           <Switch
             value={isCountdownEnabled}
             onValueChange={toggleCountdown}

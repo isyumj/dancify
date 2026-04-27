@@ -12,11 +12,13 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,6 +35,7 @@ import { VideoActionSheet } from '../../components/VideoActionSheet';
 import { ImportActionSheet } from '../../components/ImportActionSheet';
 import { RenameModal } from '../../components/RenameModal';
 import { BulkActionBar } from '../../components/BulkActionBar';
+import { AlertDialog } from '../../components/AlertDialog';
 
 const COLUMNS = 2;
 const GAP = 12;
@@ -52,7 +55,7 @@ async function buildDestPath(sourceUri: string): Promise<{ filename: string; des
   const ext = (sourceUri.split('/').pop() ?? '').match(/\.[^.]+$/)?.[0] ?? '.mp4';
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const baseDisplayName = `视频${dateStr}`;
+  const baseDisplayName = dateStr;
   const existingNames = new Set(
     (await getFilenamesByPrefix(baseDisplayName)).map((n) => n.replace(/\.[^.]+$/, ''))
   );
@@ -135,7 +138,9 @@ export default function LibraryScreen() {
   const [renamingVideo, setRenamingVideo] = useState<Video | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [showImportSheet, setShowImportSheet] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<{ title: string; message?: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [photoPermDialog, setPhotoPermDialog] = useState<'rationale' | 'denied' | null>(null);
 
   const reset = usePlayerStore((s) => s.reset);
   const insets = useSafeAreaInsets();
@@ -150,7 +155,7 @@ export default function LibraryScreen() {
     loadVideos();
   }, [loadVideos]));
 
-  const handleImportFromPhotos = async () => {
+  const doPickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       allowsEditing: false,
@@ -175,6 +180,17 @@ export default function LibraryScreen() {
     }
   };
 
+  const handleImportFromPhotos = async () => {
+    const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (status === 'granted') {
+      doPickPhoto();
+    } else if (status === 'denied') {
+      setPhotoPermDialog('denied');
+    } else {
+      setPhotoPermDialog('rationale');
+    }
+  };
+
   const handleImportFromFiles = async () => {
     const result = await DocumentPicker.getDocumentAsync({
       type: 'video/*',
@@ -182,14 +198,31 @@ export default function LibraryScreen() {
     });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
+    if (!asset.mimeType?.startsWith('video/')) {
+      setAlertMsg({ title: t('library.importFailed'), message: t('library.notAVideo') });
+      return;
+    }
     setLoading(true);
     try {
       const { filename, destPath } = await buildDestPath(asset.uri);
       await FileSystem.copyAsync({ from: asset.uri, to: destPath });
+
+      let duration = 0;
+      try {
+        const { sound, status } = await Audio.Sound.createAsync(
+          { uri: destPath },
+          { shouldPlay: false }
+        );
+        if (status.isLoaded && status.durationMillis) {
+          duration = status.durationMillis / 1000;
+        }
+        await sound.unloadAsync();
+      } catch {}
+
       reset();
       router.push({
         pathname: '/player',
-        params: { tempPath: destPath, filename, duration: '0' },
+        params: { tempPath: destPath, filename, duration: String(duration) },
       });
     } catch (e) {
       Alert.alert(t('library.importFailed'), String(e));
@@ -297,6 +330,7 @@ export default function LibraryScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dancify</Text>
       </View>
+
       <FlatList
         data={videos}
         keyExtractor={(item) => String(item.id)}
@@ -322,28 +356,28 @@ export default function LibraryScreen() {
                 <View style={styles.importIconWrapper}>
                   <Text style={styles.importPlus}>＋</Text>
                 </View>
-                <Text style={styles.importLabel}>{t('library.importBanner')}</Text>
+                <Text style={styles.importLabel} numberOfLines={1}>{t('library.importBanner')}</Text>
               </LinearGradient>
             </Pressable>
             {videos.length > 0 && (
               <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>{t('library.sectionTitle')}</Text>
+                <Text style={styles.sectionTitle} numberOfLines={1}>{t('library.sectionTitle')}</Text>
                 {isSelecting ? (
                   <View style={styles.selectingActions}>
                     <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7}>
-                      <Text style={styles.selectAllText}>
+                      <Text style={styles.selectAllText} numberOfLines={1}>
                         {selectedIds.size === videos.length
                           ? t('library.deselectAll')
                           : t('library.selectAll')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleCancelSelect} activeOpacity={0.7} style={styles.manageBtn}>
-                      <Text style={styles.manageBtnText}>{t('common.cancel')}</Text>
+                      <Text style={styles.manageBtnText} numberOfLines={1}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <TouchableOpacity onPress={() => setIsSelecting(true)} activeOpacity={0.7} style={styles.manageBtn}>
-                    <Text style={styles.manageBtnText}>{t('library.manage')}</Text>
+                    <Text style={styles.manageBtnText} numberOfLines={1}>{t('library.manage')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -368,7 +402,7 @@ export default function LibraryScreen() {
         )}
       />
 
-      {loading && (
+{loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={Colors.brandPrimary} />
           <Text style={styles.loadingText}>{t('library.importing')}</Text>
@@ -387,6 +421,39 @@ export default function LibraryScreen() {
         onRename={handleRenameOpen}
         onDelete={handleDelete}
         onClose={() => setActionVideo(null)}
+      />
+
+      <AlertDialog
+        visible={alertMsg !== null}
+        title={alertMsg?.title ?? ''}
+        message={alertMsg?.message}
+        onClose={() => setAlertMsg(null)}
+      />
+
+      <AlertDialog
+        visible={photoPermDialog === 'rationale'}
+        title={t('permission.photosTitle')}
+        message={t('permission.photosRationale')}
+        closeText={t('common.cancel')}
+        onClose={() => setPhotoPermDialog(null)}
+        confirmText={t('permission.continue')}
+        onConfirm={() => {
+          setPhotoPermDialog(null);
+          setTimeout(doPickPhoto, 100);
+        }}
+      />
+
+      <AlertDialog
+        visible={photoPermDialog === 'denied'}
+        title={t('permission.photosDeniedTitle')}
+        message={t('permission.photosDeniedMessage')}
+        closeText={t('common.cancel')}
+        onClose={() => setPhotoPermDialog(null)}
+        confirmText={t('permission.openSettings')}
+        onConfirm={() => {
+          setPhotoPermDialog(null);
+          Linking.openSettings();
+        }}
       />
 
       <RenameModal

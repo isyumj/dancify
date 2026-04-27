@@ -44,14 +44,28 @@
     "importFromFiles": "从文件导入",
     "importing": "导入中…",
     "importFailed": "导入失败",
+    "notAVideo": "所选文件不是视频，请选择一个视频文件。",
     "deleteTitle": "删除视频",
     "deleteConfirm": "确认删除「{{name}}」？相关片段也会一并删除。",
     "bulkDeleteConfirm": "确认删除选中的 {{count}} 个视频？相关片段也会一并删除。",
+    "rename": "重命名",
     "deleteBtn": "删除",
-    "renameFailed": "重命名失败，请重试"
+    "renameFailed": "重命名失败，请重试",
+    "bulkSelectHint": "请选择视频",
+    "bulkSelectedCount": "已选 {{count}} 个"
+  },
+  "permission": {
+    "photosTitle": "访问相册",
+    "photosRationale": "Dancify 需要访问你的相册，以便导入舞蹈视频进行练习。",
+    "photosDeniedTitle": "需要相册权限",
+    "photosDeniedMessage": "相册访问权限已关闭，请前往「设置」开启后再试。",
+    "continue": "继续",
+    "openSettings": "前往设置"
   },
   "common": {
     "cancel": "取消",
+    "ok": "确定",
+    "save": "保存",
     "done": "完成",
     "comingSoon": "即将上线，敬请期待。"
   },
