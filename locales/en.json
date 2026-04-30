@@ -15,12 +15,32 @@
     },
     "preferences": {
       "title": "Preferences",
-      "language": "Language"
+      "language": "Language",
+      "analytics": "Share Anonymous Analytics"
     },
     "about": {
       "title": "About & Support",
       "privacy": "Privacy Policy",
-      "feedback": "Feedback"
+      "terms": "Terms of Use",
+      "rateApp": "Rate the App",
+      "rateTitle": "Enjoying ReDance?",
+      "rateExpandPositive": "A quick review on the App Store means a lot to us — it only takes a minute.",
+      "rateExpandNegative": "What could we improve? Your feedback really helps us get better.",
+      "rateStoreTitle": "Thanks for the love!",
+      "rateStoreMessage": "Would you like to rate us on the App Store? It only takes a minute and means a lot to us.",
+      "rateStoreConfirm": "Rate Now",
+      "rateStoreLater": "Later",
+      "rateFeedbackTitle": "Thanks for your feedback",
+      "rateFeedbackMessage": "Would you like to tell us what we can improve?",
+      "rateFeedbackConfirm": "Give Feedback",
+      "rateFeedbackLater": "No Thanks",
+      "feedback": "Feedback",
+      "feedbackTitle": "Feedback",
+      "feedbackPlaceholder": "Share your suggestions or questions — we read every message.",
+      "feedbackSubmit": "Send",
+      "feedbackSuccess": "Thanks for your feedback!",
+      "feedbackError": "Failed to send, please try again later",
+      "feedbackEmpty": "Please enter your feedback"
     }
   },
   "language": {
@@ -56,11 +76,18 @@
   },
   "permission": {
     "photosTitle": "Access Photo Library",
-    "photosRationale": "Dancify needs access to your photo library to import dance videos for practice.",
+    "photosRationale": "ReDance needs access to your photo library to import dance videos for practice.",
     "photosDeniedTitle": "Permission Required",
     "photosDeniedMessage": "Photo library access is disabled. Please enable it in Settings to import videos.",
     "continue": "Continue",
     "openSettings": "Open Settings"
+  },
+  "privacy": {
+    "title": "Before You Continue",
+    "body": "ReDance collects anonymous usage data (such as feature interactions and session stats) to help improve the app. We do not collect personal information, your identity, or advertising identifiers (IDFA).\n\nYou can change this choice at any time in the Privacy Policy.",
+    "policyLink": "View Privacy Policy",
+    "accept": "Agree & Continue",
+    "decline": "Decline"
   },
   "common": {
     "cancel": "Cancel",

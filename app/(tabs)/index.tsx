@@ -28,6 +28,7 @@ import {
   getFilenamesByPrefix,
 } from '../../db/database';
 import { Colors } from '../../constants/theme';
+import { Analytics } from '../../utils/analytics';
 import { Feather } from '@expo/vector-icons';
 import { Video } from '../../types';
 import { usePlayerStore } from '../../store/playerStore';
@@ -168,10 +169,11 @@ export default function LibraryScreen() {
       const { filename, destPath } = await buildDestPath(asset.uri);
       await FileSystem.copyAsync({ from: asset.uri, to: destPath });
       const duration = asset.duration ? asset.duration / 1000 : 0;
+      Analytics.videoImported({ duration, source: 'photos', videos_in_library: videos.length + 1 });
       reset();
       router.push({
         pathname: '/player',
-        params: { tempPath: destPath, filename, duration: String(duration) },
+        params: { tempPath: destPath, filename, duration: String(duration), videosCount: String(videos.length) },
       });
     } catch (e) {
       Alert.alert(t('library.importFailed'), String(e));
@@ -219,10 +221,11 @@ export default function LibraryScreen() {
         await sound.unloadAsync();
       } catch {}
 
+      Analytics.videoImported({ duration, source: 'files', videos_in_library: videos.length + 1 });
       reset();
       router.push({
         pathname: '/player',
-        params: { tempPath: destPath, filename, duration: String(duration) },
+        params: { tempPath: destPath, filename, duration: String(duration), videosCount: String(videos.length) },
       });
     } catch (e) {
       Alert.alert(t('library.importFailed'), String(e));
@@ -328,7 +331,7 @@ export default function LibraryScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dancify</Text>
+        <Text style={styles.headerTitle}>ReDance</Text>
       </View>
 
       <FlatList

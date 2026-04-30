@@ -7,13 +7,24 @@ import { Colors } from '../constants/theme';
 
 const SPEEDS: PlaybackSpeed[] = [0.7, 0.8, 0.9, 1.0];
 
-export function PlayerControls() {
+interface Props {
+  onSpeedChange?: (from: PlaybackSpeed, to: PlaybackSpeed) => void;
+}
+
+export function PlayerControls({ onSpeedChange }: Props) {
   const { t } = useTranslation();
   const {
     speed, setSpeed,
     isMirror, toggleMirror,
     isCountdownEnabled, toggleCountdown,
   } = usePlayerStore();
+
+  const handleSpeedPress = (s: PlaybackSpeed) => {
+    if (s === speed) return;
+    const from = speed;
+    setSpeed(s);
+    onSpeedChange?.(from, s);
+  };
 
   return (
     <View style={styles.container}>
@@ -23,7 +34,7 @@ export function PlayerControls() {
           <Pressable
             key={s}
             style={[styles.pill, speed === s && styles.pillActiveSpeed]}
-            onPress={() => setSpeed(s)}
+            onPress={() => handleSpeedPress(s)}
           >
             <Text style={[styles.pillText, speed === s && styles.pillTextActiveSpeed]}>
               {s === 1.0 ? '1x' : `${s}x`}

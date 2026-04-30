@@ -1,4 +1,4 @@
-# Dancify — Functional Test Cases Checklist
+# ReDance — Functional Test Cases Checklist
 App Version: Pre-Release | Platform: iOS (Expo/React Native) | QA Standard: SDET / App Store Submission
 
 ================================================================================
@@ -58,7 +58,7 @@ Happy Path
 Edge Cases & Negative Paths
 -----------------------------
 [ ] TC-IMP-10 — Photo library permission denied (first ask): On fresh install, deny photo library access. Verify app does not crash; verify appropriate error/prompt is shown (not a blank screen).
-[ ] TC-IMP-11 — Permission denied, then granted via Settings: Deny permission, then go to iOS Settings → Dancify → Photos → enable "All Photos." Return to app and attempt import. Picker launches successfully.
+[ ] TC-IMP-11 — Permission denied, then granted via Settings: Deny permission, then go to iOS Settings → ReDance → Photos → enable "All Photos." Return to app and attempt import. Picker launches successfully.
 [ ] TC-IMP-12 — "Limited Photo Access" (iOS 14+ partial access): Grant "Selected Photos" (limited access). Import picker shows only the selected photos. Importing an allowed video completes normally.
 [ ] TC-IMP-13 — Import a very large video (> 500MB, 4K/60fps): Select a large video file. Compression runs to completion without a memory crash or OOM error. Progress bar advances smoothly.
 [ ] TC-IMP-14 — Import a very short video (< 2s): Import a 1-second clip. App handles edge case duration. Thumbnail extracted. Player opens without crash.
@@ -298,12 +298,12 @@ Edge Cases & Negative Paths
 [ ] TC-LIFE-06 — Incoming phone call during countdown: Receive a call exactly as the 3-2-1 countdown fires. After call ends, countdown audio resumes or the safety timeout handles the stuck state. No permanent mute.
 [ ] TC-LIFE-07 — Siri activation during playback: Say "Hey Siri" while the video is playing. Siri overlay appears. Dismiss Siri. Video playback is not in a broken state.
 [ ] TC-LIFE-08 — AirPlay / audio output device change: Connect Bluetooth headphones while playing. Disconnect headphones. App does not crash; audio output switches gracefully.
-[ ] TC-LIFE-09 — Other apps taking audio focus (Spotify, podcast): Start Spotify or another audio app, then return to Dancify. Video audio either resumes or the user can manually play without crash.
+[ ] TC-LIFE-09 — Other apps taking audio focus (Spotify, podcast): Start Spotify or another audio app, then return to ReDance. Video audio either resumes or the user can manually play without crash.
 [ ] TC-LIFE-10 — Control Center media controls: Swipe to Control Center while playing. Play/pause from Control Center (if the app registers as an audio session). Verify behavior is consistent.
 [ ] TC-LIFE-11 — Low memory warning: Open a large video, trigger memory pressure (run other memory-intensive apps). App survives with applicationDidReceiveMemoryWarning; no crash.
-[ ] TC-LIFE-12 — Rapid app switching: Switch between Dancify and another app 10 times in 30 seconds. No audio leak, no ghost playback, no crash.
+[ ] TC-LIFE-12 — Rapid app switching: Switch between ReDance and another app 10 times in 30 seconds. No audio leak, no ghost playback, no crash.
 [ ] TC-LIFE-13 — Kill during DB write: Force-quit the app exactly while a video rename or settings save is in progress. Re-launch; SQLite WAL mode ensures DB is not corrupted.
-[ ] TC-LIFE-14 — Background app refresh disabled: With "Background App Refresh" disabled for Dancify in iOS Settings, large import is triggered. Verify behavior when app is backgrounded (compression may pause; no crash on return).
+[ ] TC-LIFE-14 — Background app refresh disabled: With "Background App Refresh" disabled for ReDance in iOS Settings, large import is triggered. Verify behavior when app is backgrounded (compression may pause; no crash on return).
 
 ================================================================================
 Module 14: Localization — String & UI Validation
@@ -367,7 +367,7 @@ Module 17: App Store Review Readiness (Sanity Checks)
 [ ] TC-ASR-04 — No third-party analytics / tracking SDKs: Confirm no ad SDKs or tracking libraries are bundled (check package.json). If any are present, verify ATT prompt is implemented.
 [ ] TC-ASR-05 — No adult / inappropriate content: App content is all user-provided dance videos; no stock content is bundled.
 [ ] TC-ASR-06 — No broken "coming soon" links: Verify "Privacy Policy" and "Feedback" rows either navigate to real content or show a clear in-app placeholder. They must not 404 or crash.
-[ ] TC-ASR-07 — App name and icon are consistent: App name "Dancify" and icon match what is set in app.json. Tapping the icon on the home screen shows the correct name.
+[ ] TC-ASR-07 — App name and icon are consistent: App name "ReDance" and icon match what is set in app.json. Tapping the icon on the home screen shows the correct name.
 [ ] TC-ASR-08 — Runs on minimum deployment target: Verify the app runs on the minimum iOS version specified in app.json (test on oldest supported device/simulator).
 [ ] TC-ASR-09 — No hardcoded IP addresses or debug endpoints: No localhost, 192.168.x.x, or http:// addresses in production code paths.
 [ ] TC-ASR-10 — No visible console/debug overlays: No __DEV__ debug banners, Flipper overlays, or Expo DevTools UI visible in the production build.

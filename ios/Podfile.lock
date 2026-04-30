@@ -33,6 +33,8 @@ PODS:
     - ExpoModulesCore
   - ExpoAudio (55.0.14):
     - ExpoModulesCore
+  - ExpoClipboard (55.0.13):
+    - ExpoModulesCore
   - ExpoDocumentPicker (55.0.13):
     - ExpoModulesCore
   - ExpoDomWebView (55.0.5):
@@ -97,11 +99,15 @@ PODS:
     - RNScreens
   - ExpoSQLite (55.0.15):
     - ExpoModulesCore
+  - ExpoStoreReview (55.0.13):
+    - ExpoModulesCore
   - ExpoSymbols (55.0.7):
     - ExpoModulesCore
   - ExpoVideo (55.0.15):
     - ExpoModulesCore
   - ExpoVideoThumbnails (55.0.14):
+    - ExpoModulesCore
+  - ExpoWebBrowser (55.0.14):
     - ExpoModulesCore
   - FBLazyVector (0.83.6)
   - hermes-engine (0.14.1):
@@ -2293,6 +2299,7 @@ DEPENDENCIES:
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoAudio (from `../node_modules/expo-audio/ios`)
+  - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
   - "ExpoDomWebView (from `../node_modules/@expo/dom-webview/ios`)"
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
@@ -2309,9 +2316,11 @@ DEPENDENCIES:
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
   - ExpoRouter (from `../node_modules/expo-router/ios`)
   - ExpoSQLite (from `../node_modules/expo-sqlite/ios`)
+  - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
   - ExpoSymbols (from `../node_modules/expo-symbols/ios`)
   - ExpoVideo (from `../node_modules/expo-video/ios`)
   - ExpoVideoThumbnails (from `../node_modules/expo-video-thumbnails/ios`)
+  - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2416,6 +2425,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-asset/ios"
   ExpoAudio:
     :path: "../node_modules/expo-audio/ios"
+  ExpoClipboard:
+    :path: "../node_modules/expo-clipboard/ios"
   ExpoDocumentPicker:
     :path: "../node_modules/expo-document-picker/ios"
   ExpoDomWebView:
@@ -2448,12 +2459,16 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-router/ios"
   ExpoSQLite:
     :path: "../node_modules/expo-sqlite/ios"
+  ExpoStoreReview:
+    :path: "../node_modules/expo-store-review/ios"
   ExpoSymbols:
     :path: "../node_modules/expo-symbols/ios"
   ExpoVideo:
     :path: "../node_modules/expo-video/ios"
   ExpoVideoThumbnails:
     :path: "../node_modules/expo-video-thumbnails/ios"
+  ExpoWebBrowser:
+    :path: "../node_modules/expo-web-browser/ios"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
@@ -2624,6 +2639,7 @@ SPEC CHECKSUMS:
   Expo: bfedba58da14bf45546ae57e6a5bd5152a1546b4
   ExpoAsset: f56ed740b6a127da2bfd90832cf688ae309d4410
   ExpoAudio: a826903abdeba843cde8602bd1c077d808b31f1d
+  ExpoClipboard: 5d1b0cd2686406f21e616f2d9b3431259dee2e6a
   ExpoDocumentPicker: be59b82799ae30811e3f37a7521d6622baa63a19
   ExpoDomWebView: 2b2fbd9a07de8790569257cbf9dfdaa31cf95c70
   ExpoFileSystem: a0e4a5a09c9c4f84338289b273a172609452dec9
@@ -2640,9 +2656,11 @@ SPEC CHECKSUMS:
   ExpoModulesJSI: 24121c9a2f32d5f6b6ca2f7ff54925be716d5841
   ExpoRouter: e2c56f80102b153c5f8c887b38094ef936c266a2
   ExpoSQLite: f63db535d24c59722971241ea9ade2a878dfabea
+  ExpoStoreReview: dab6e25f0641784bd6207f729f893423afbb6574
   ExpoSymbols: 8b63e859ba013df1f2fc666f535fddb3d5270569
   ExpoVideo: 434d1e32486309359b8eff4880d636fd8c0c0ba1
   ExpoVideoThumbnails: 4e7d245fc770bcf831dd954ec68977aaf480d98f
+  ExpoWebBrowser: f88a3ba50a025b673236a46d2654a49b985953d6
   FBLazyVector: 427fa1856a481856091061293ce865a75aa4f20f
   hermes-engine: 9402b55c35264393e0a1fabf07e427bba1b14fb7
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d

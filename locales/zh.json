@@ -15,12 +15,32 @@
     },
     "preferences": {
       "title": "偏好设置",
-      "language": "语言设置"
+      "language": "语言设置",
+      "analytics": "分享匿名使用数据"
     },
     "about": {
       "title": "关于与支持",
       "privacy": "隐私政策",
-      "feedback": "用户反馈"
+      "terms": "用户协议",
+      "rateApp": "给 App 评分",
+      "rateTitle": "喜欢 ReDance 吗？",
+      "rateExpandPositive": "去 App Store 给我们评个分吧，只需一分钟，对我们帮助很大。",
+      "rateExpandNegative": "有哪里可以改进？你的反馈对我们很重要。",
+      "rateStoreTitle": "谢谢你的支持！",
+      "rateStoreMessage": "愿意去 App Store 给我们评个分吗？只需一分钟，对我们帮助很大。",
+      "rateStoreConfirm": "去评价",
+      "rateStoreLater": "下次再说",
+      "rateFeedbackTitle": "感谢你的反馈",
+      "rateFeedbackMessage": "愿意告诉我们哪里可以改进吗？",
+      "rateFeedbackConfirm": "去反馈",
+      "rateFeedbackLater": "不了，谢谢",
+      "feedback": "用户反馈",
+      "feedbackTitle": "用户反馈",
+      "feedbackPlaceholder": "请输入您的建议或问题，我们会认真阅读每一条反馈。",
+      "feedbackSubmit": "发送",
+      "feedbackSuccess": "感谢您的反馈！",
+      "feedbackError": "发送失败，请稍后再试",
+      "feedbackEmpty": "请输入反馈内容"
     }
   },
   "language": {
@@ -56,11 +76,18 @@
   },
   "permission": {
     "photosTitle": "访问相册",
-    "photosRationale": "Dancify 需要访问你的相册，以便导入舞蹈视频进行练习。",
+    "photosRationale": "ReDance 需要访问你的相册，以便导入舞蹈视频进行练习。",
     "photosDeniedTitle": "需要相册权限",
     "photosDeniedMessage": "相册访问权限已关闭，请前往「设置」开启后再试。",
     "continue": "继续",
     "openSettings": "前往设置"
+  },
+  "privacy": {
+    "title": "继续前请阅读",
+    "body": "ReDance 会收集匿名使用数据（如功能点击、会话统计），以帮助改善应用体验。我们不会收集您的个人身份信息，也不会访问设备广告标识符（IDFA）。\n\n您可以随时通过隐私政策页面了解详情。",
+    "policyLink": "查看隐私政策",
+    "accept": "同意并继续",
+    "decline": "拒绝"
   },
   "common": {
     "cancel": "取消",

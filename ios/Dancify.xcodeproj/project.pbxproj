@@ -10,8 +10,8 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		9644B72473E927D4B507D5D1 /* libPods-Dancify.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A7297E6FBE46A398066E22A6 /* libPods-Dancify.a */; };
-		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		B587FE030DF34B7A83ACDA66 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0A000836A9004B72AED4D0AF /* InfoPlist.strings */; };
+		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		C5CDAFAA1C8A757C31973DF1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E3E2BE3DF3310CB4E44AB97E /* PrivacyInfo.xcprivacy */; };
 		CD5FA7F82228A5AA5172AE3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01374CF942A7DA209CA2B4E2 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
@@ -31,7 +31,7 @@
 		EE451B3459BB85FC40CEDBFB /* Pods-Dancify.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Dancify.release.xcconfig"; path = "Target Support Files/Pods-Dancify/Pods-Dancify.release.xcconfig"; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Dancify/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Dancify-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Dancify-Bridging-Header.h"; path = "Dancify/Dancify-Bridging-Header.h"; sourceTree = "<group>"; };
-		FAFDA061D68A442E8F19ADBB /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		FAFDA061D68A442E8F19ADBB /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -206,17 +206,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXVariantGroup section */
-		0A000836A9004B72AED4D0AF /* InfoPlist.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				FAFDA061D68A442E8F19ADBB /* zh-Hans */,
-			);
-			name = InfoPlist.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
-
 /* Begin PBXShellScriptBuildPhase section */
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -351,6 +340,17 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXVariantGroup section */
+		0A000836A9004B72AED4D0AF /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FAFDA061D68A442E8F19ADBB /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -411,7 +411,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.isyumj.dancify;
+				PRODUCT_BUNDLE_IDENTIFIER = com.isyumj.DanceWithMe;
 				PRODUCT_NAME = Dancify;
 				SWIFT_OBJC_BRIDGING_HEADER = "Dancify/Dancify-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

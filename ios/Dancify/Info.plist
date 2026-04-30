@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Dancify</string>
+	<string>ReDance</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,7 +46,7 @@
 		<true/>
 	</dict>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Dancify accesses only videos in your photo library so you can select and import them as personal practice references within the app. No files will be modified, saved back to your library, or uploaded to any server.</string>
+	<string>ReDance accesses only videos in your photo library so you can select and import them as personal practice references within the app. No files will be modified, saved back to your library, or uploaded to any server.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

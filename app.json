@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Dancify",
+    "name": "ReDance",
     "slug": "dancify",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,7 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.isyumj.dancify",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Dancify needs access to your photo library to let you import local videos for dance practice."
+        "NSPhotoLibraryUsageDescription": "ReDance needs access to your photo library to let you import local videos for dance practice."
       }
     },
     "android": {
@@ -48,14 +48,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Dancify needs access to your photo library to let you import local videos for dance practice.",
+          "photosPermission": "ReDance needs access to your photo library to let you import local videos for dance practice.",
           "cameraPermission": false
         }
       ],
       "expo-localization",
       "expo-font",
       "expo-asset",
-      "expo-image"
+      "expo-image",
+      "expo-web-browser"
     ]
   }
 }

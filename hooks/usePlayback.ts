@@ -15,6 +15,7 @@ export function usePlayback(
   player: VideoPlayer | null,
   duration: number,
   onCountdownTick?: (n: number | null) => void,
+  onLoop?: () => void,
 ) {
   const { speed, loopStart, loopEnd, isCountdownEnabled } = usePlayerStore();
   const { playCountdown } = useCountdown();
@@ -45,6 +46,7 @@ export function usePlayback(
     if (isCountingDownRef.current) return;
     isCountingDownRef.current = true;  // guard set before any async work
 
+    onLoop?.();
     player.pause();
     // Seek to target immediately so ticks fired during countdown see the new position
     player.seekBy(seekTarget - (player.currentTime ?? 0));
@@ -63,7 +65,7 @@ export function usePlayback(
 
     player.play();
     isCountingDownRef.current = false;  // clear only after play
-  }, [player, isCountdownEnabled, playCountdown, onCountdownTick]);
+  }, [player, isCountdownEnabled, playCountdown, onCountdownTick, onLoop]);
 
   // A-B loop polling
   useEffect(() => {

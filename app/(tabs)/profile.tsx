@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,10 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Switch,
+  Animated,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +18,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Colors } from '../../constants/theme';
+import { getStoredConsent, storeConsent } from '../../utils/privacyGate';
+import { initAnalytics, disableAnalytics } from '../../utils/analytics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { openAppStoreRatingPage } from '../../utils/ratingPrompt';
+
+const KEY_USER_RATING = 'user_rating';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(1) + ' GB';
@@ -40,19 +49,33 @@ export default function ProfileScreen() {
   const [videosBytes, setVideosBytes] = useState(0);
   const [cacheBytes, setCacheBytes] = useState(0);
   const [clearing, setClearing] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
   const loadStorage = useCallback(async () => {
     try {
-      const [vb, cb] = await Promise.all([
+      const [vb, cb, consent] = await Promise.all([
         dirSize(FileSystem.documentDirectory + 'videos/'),
         dirSize(FileSystem.cacheDirectory ?? ''),
+        getStoredConsent(),
       ]);
       setVideosBytes(vb);
       setCacheBytes(cb);
+      setAnalyticsEnabled(consent === 'accepted');
     } catch (e) {
       console.error('storage load error', e);
     }
   }, []);
+
+  const handleAnalyticsToggle = async (value: boolean) => {
+    setAnalyticsEnabled(value);
+    if (value) {
+      await storeConsent('accepted');
+      initAnalytics();
+    } else {
+      await storeConsent('declined');
+      disableAnalytics();
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -91,6 +114,46 @@ export default function ProfileScreen() {
       ]
     );
   };
+
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingDone, setRatingDone] = useState(false);
+  const expansionAnim = useRef(new Animated.Value(0)).current;
+  const expansionShownRef = useRef(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(KEY_USER_RATING).then((val) => {
+      if (val) setRatingDone(true);
+    });
+  }, []);
+
+  const handleStarPress = useCallback((rating: number) => {
+    setSelectedRating(rating);
+    if (!expansionShownRef.current) {
+      expansionShownRef.current = true;
+      Animated.timing(expansionAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [expansionAnim]);
+
+  const handleRatingDismiss = useCallback(() => {
+    AsyncStorage.setItem(KEY_USER_RATING, 'dismissed');
+    setRatingDone(true);
+  }, []);
+
+  const handleRatingConfirmPositive = useCallback(() => {
+    AsyncStorage.setItem(KEY_USER_RATING, String(selectedRating));
+    setRatingDone(true);
+    openAppStoreRatingPage();
+  }, [selectedRating]);
+
+  const handleRatingConfirmNegative = useCallback(() => {
+    AsyncStorage.setItem(KEY_USER_RATING, String(selectedRating));
+    setRatingDone(true);
+    router.push('/feedback');
+  }, [selectedRating, router]);
 
   const currentLangLabel = t(`language.${i18n.language as 'zh' | 'en'}`);
 
@@ -147,14 +210,103 @@ export default function ProfileScreen() {
             <Text style={styles.rowHint}>{currentLangLabel}</Text>
             <Ionicons name="chevron-forward" size={16} color="#444" />
           </Pressable>
+
+          <View style={styles.divider} />
+
+          <View style={styles.row}>
+            <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
+              <Ionicons name="analytics-outline" size={15} color="#fff" />
+            </View>
+            <Text style={styles.rowLabel}>{t('profile.preferences.analytics')}</Text>
+            <Switch
+              value={analyticsEnabled}
+              onValueChange={handleAnalyticsToggle}
+              trackColor={{ false: '#3A3A3C', true: Colors.brandPrimary }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.analyticsInfo}>
+            <Text style={styles.analyticsInfoText}>{t('privacy.body')}</Text>
+            <Pressable
+              onPress={() =>
+                WebBrowser.openBrowserAsync(
+                  `https://isyumj.github.io/redance-app/privacy.html?lang=${i18n.language}`
+                )
+              }
+            >
+              <Text style={styles.analyticsInfoLink}>{t('privacy.policyLink')}</Text>
+            </Pressable>
+          </View>
         </View>
+
+        {/* ── Rating ── */}
+        {!ratingDone && (
+          <View style={[styles.card, { marginTop: 28 }]}>
+            <View style={styles.ratingRow}>
+              <Text style={styles.rowLabel}>{t('profile.about.rateTitle')}</Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Pressable key={n} onPress={() => handleStarPress(n)} hitSlop={8}>
+                    <Ionicons
+                      name={n <= selectedRating ? 'star' : 'star-outline'}
+                      size={26}
+                      color={n <= selectedRating ? '#FFD60A' : '#555'}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {selectedRating > 0 && (
+              <Animated.View
+                style={{
+                  opacity: expansionAnim,
+                  transform: [{
+                    translateY: expansionAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-6, 0],
+                    }),
+                  }],
+                }}
+              >
+                <View style={styles.divider} />
+                <Text style={styles.ratingExpandText}>
+                  {selectedRating >= 4
+                    ? t('profile.about.rateExpandPositive')
+                    : t('profile.about.rateExpandNegative')}
+                </Text>
+                <View style={styles.ratingBtnRow}>
+                  <Pressable
+                    style={({ pressed }) => [styles.ratingBtn, styles.ratingBtnSecondary, pressed && { opacity: 0.6 }]}
+                    onPress={handleRatingDismiss}
+                  >
+                    <Text style={styles.ratingBtnSecondaryText}>{t('profile.about.rateStoreLater')}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.ratingBtn, styles.ratingBtnPrimary, pressed && { opacity: 0.8 }]}
+                    onPress={selectedRating >= 4 ? handleRatingConfirmPositive : handleRatingConfirmNegative}
+                  >
+                    <Text style={styles.ratingBtnPrimaryText}>
+                      {selectedRating >= 4
+                        ? t('profile.about.rateStoreConfirm')
+                        : t('profile.about.rateFeedbackConfirm')}
+                    </Text>
+                  </Pressable>
+                </View>
+              </Animated.View>
+            )}
+          </View>
+        )}
 
         {/* ── About ── */}
         <Text style={styles.groupLabel}>{t('profile.about.title')}</Text>
         <View style={styles.card}>
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => Alert.alert(t('profile.about.privacy'), t('common.comingSoon'))}
+            onPress={() => WebBrowser.openBrowserAsync(`https://isyumj.github.io/redance-app/privacy.html?lang=${i18n.language}`)}
           >
             <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="shield-checkmark-outline" size={15} color="#fff" />
@@ -167,7 +319,20 @@ export default function ProfileScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => Alert.alert(t('profile.about.feedback'), t('common.comingSoon'))}
+            onPress={() => WebBrowser.openBrowserAsync(`https://isyumj.github.io/redance-app/terms.html?lang=${i18n.language}`)}
+          >
+            <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
+              <Ionicons name="document-text-outline" size={15} color="#fff" />
+            </View>
+            <Text style={styles.rowLabel}>{t('profile.about.terms')}</Text>
+            <Ionicons name="chevron-forward" size={16} color="#444" />
+          </Pressable>
+
+          <View style={styles.divider} />
+
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            onPress={() => router.push('/feedback')}
           >
             <View style={[styles.iconBox, { backgroundColor: Colors.bgCard }]}>
               <Ionicons name="chatbubble-ellipses-outline" size={15} color="#fff" />
@@ -177,7 +342,44 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.version}>Dancify  v1.0.0</Text>
+        <Text style={styles.version}>ReDance  v1.0.0</Text>
+
+        {__DEV__ && (
+          <>
+            <Text style={styles.groupLabel}>Dev</Text>
+            <View style={styles.card}>
+              <Pressable
+                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                onPress={() => router.push('/privacy-preview')}
+              >
+                <View style={[styles.iconBox, { backgroundColor: '#3A3A3C' }]}>
+                  <Ionicons name="eye-outline" size={15} color="#fff" />
+                </View>
+                <Text style={styles.rowLabel}>Preview Privacy Screen</Text>
+                <Ionicons name="chevron-forward" size={16} color="#444" />
+              </Pressable>
+
+              <View style={styles.divider} />
+
+              <Pressable
+                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                onPress={() => {
+                  AsyncStorage.removeItem(KEY_USER_RATING);
+                  setSelectedRating(0);
+                  setRatingDone(false);
+                  expansionShownRef.current = false;
+                  expansionAnim.setValue(0);
+                }}
+              >
+                <View style={[styles.iconBox, { backgroundColor: '#3A3A3C' }]}>
+                  <Ionicons name="refresh-outline" size={15} color="#fff" />
+                </View>
+                <Text style={styles.rowLabel}>Reset Rating Card</Text>
+                <Ionicons name="chevron-forward" size={16} color="#444" />
+              </Pressable>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -277,6 +479,64 @@ const styles = StyleSheet.create({
   },
   rowLabel: { flex: 1, color: '#e8e8e8', fontSize: 15 },
   rowHint: { color: '#8E8E93', fontSize: 14, marginRight: 2 },
+
+  analyticsInfo: {
+    paddingTop: 2,
+  },
+  analyticsInfoText: {
+    color: '#8E8E93',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 10,
+  },
+  analyticsInfoLink: {
+    color: Colors.brandPrimary,
+    fontSize: 13,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 36,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  ratingExpandText: {
+    color: '#8E8E93',
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  ratingBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  ratingBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 9,
+    alignItems: 'center',
+  },
+  ratingBtnPrimary: {
+    backgroundColor: Colors.brandPrimary,
+  },
+  ratingBtnSecondary: {
+    backgroundColor: '#2C2C2E',
+  },
+  ratingBtnPrimaryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  ratingBtnSecondaryText: {
+    color: '#8E8E93',
+    fontSize: 14,
+  },
 
   version: {
     color: '#333',

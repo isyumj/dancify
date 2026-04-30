@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Animated,
+  AppState,
   View,
   StyleSheet,
   Text,
@@ -18,8 +19,10 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { getVideo, insertVideo, updateVideoDuration, updateVideoThumbnail, getSetting, setSetting } from '../db/database';
 import { getThumbnailAsync } from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Video } from '../types';
+import { Video, PlaybackSpeed } from '../types';
 import { usePlayerStore, loadVideoSettings, saveVideoSettings } from '../store/playerStore';
+import { Analytics } from '../utils/analytics';
+import { recordSessionAndMaybePrompt } from '../utils/ratingPrompt';
 import { usePlayback } from '../hooks/usePlayback';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { PlayerControls } from '../components/PlayerControls';
@@ -33,14 +36,14 @@ function fmt(seconds: number): string {
 }
 
 export default function PlayerScreen() {
-  const { videoId, tempPath, filename: filenameParam, duration: durationParam, isNew } =
+  const { videoId, tempPath, filename: filenameParam, duration: durationParam, isNew, videosCount } =
     useLocalSearchParams<{
       videoId?: string;
       tempPath?: string;
       filename?: string;
       duration?: string;
-      /** Set by the library when opening a newly background-imported video for the first time. */
       isNew?: string;
+      videosCount?: string;
     }>();
 
   const isNewImport = !!tempPath;
@@ -104,6 +107,56 @@ export default function PlayerScreen() {
   const seekIndicatorOpacity = useRef(new Animated.Value(0)).current;
   const [seekFeedback, setSeekFeedback] = useState<'left' | 'right' | null>(null);
 
+  // Analytics session tracking
+  const setupShownAtRef = useRef<number>(isNewImport || isNew === 'true' ? Date.now() : 0);
+  const isFirstSessionRef = useRef(false);
+  const sessionStartTimeRef = useRef<number | null>(null);
+  const durationRef = useRef(0);
+  const playStartTimeRef = useRef<number | null>(null);
+  const durationWatchedRef = useRef(0);
+  const loopCountRef = useRef(0);
+  const gestureSeekCountRef = useRef(0);
+  const scrubCountRef = useRef(0);
+  const pauseCountRef = useRef(0);
+  const hasTrackedPlaybackStartRef = useRef(false);
+  const hasEndedSessionRef = useRef(false);
+
+  const firePlaybackStarted = useCallback(() => {
+    if (hasTrackedPlaybackStartRef.current) return;
+    hasTrackedPlaybackStartRef.current = true;
+    sessionStartTimeRef.current = Date.now();
+    const { speed, isMirror, isCountdownEnabled } = usePlayerStore.getState();
+    Analytics.videoPlaybackStarted({
+      speed,
+      mirror_on: isMirror,
+      countdown_on: isCountdownEnabled,
+      is_first_session: isFirstSessionRef.current,
+    });
+  }, []);
+
+  const fireSessionEnd = useCallback((exitType: 'back' | 'background' | 'crash') => {
+    if (!hasTrackedPlaybackStartRef.current) return;
+    if (hasEndedSessionRef.current) return;
+    hasEndedSessionRef.current = true;
+    let durationWatched = durationWatchedRef.current;
+    if (playStartTimeRef.current !== null) {
+      durationWatched += (Date.now() - playStartTimeRef.current) / 1000;
+    }
+    const dur = durationRef.current;
+    const { speed, isMirror, isCountdownEnabled } = usePlayerStore.getState();
+    Analytics.playerSessionEnd({
+      duration_watched: Math.round(durationWatched),
+      loop_count: loopCountRef.current,
+      speed,
+      mirror_on: isMirror,
+      countdown_on: isCountdownEnabled,
+      completion_rate: dur > 0 ? Math.round((durationWatched / dur) * 100) / 100 : 0,
+      exit_type: exitType,
+      gesture_seek_count: gestureSeekCountRef.current,
+      scrub_count: scrubCountRef.current,
+      pause_count: pauseCountRef.current,
+    });
+  }, []);
 
   useEffect(() => {
     if (tempPath && filenameParam) {
@@ -271,7 +324,49 @@ export default function PlayerScreen() {
     return () => clearInterval(id);
   }, [player, duration, video]);
 
-  usePlayback(player, duration, setCountdownNum);
+  // Load is_first_session flag from DB (runs once on mount)
+  useEffect(() => {
+    getSetting('hasStartedPlayback').then((val) => {
+      if (!val) {
+        isFirstSessionRef.current = true;
+        setSetting('hasStartedPlayback', '1').catch(() => {});
+      }
+    });
+  }, []);
+
+  // Keep durationRef in sync for use inside fireSessionEnd (avoids stale closure)
+  useEffect(() => { durationRef.current = duration; }, [duration]);
+
+  // Track play duration (accumulate while playing, pause while not)
+  useEffect(() => {
+    if (isPlaying) {
+      if (playStartTimeRef.current === null) playStartTimeRef.current = Date.now();
+    } else {
+      if (playStartTimeRef.current !== null) {
+        durationWatchedRef.current += (Date.now() - playStartTimeRef.current) / 1000;
+        playStartTimeRef.current = null;
+      }
+    }
+  }, [isPlaying]);
+
+  // Fire video_playback_started once when video first plays without setup visible
+  useEffect(() => {
+    if (isPlaying && !hasTrackedPlaybackStartRef.current && !setupVisible) {
+      firePlaybackStarted();
+    }
+  }, [isPlaying, setupVisible, firePlaybackStarted]);
+
+  // Fire player_session_end when app goes to background
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        fireSessionEnd('background');
+      }
+    });
+    return () => sub.remove();
+  }, [fireSessionEnd]);
+
+  usePlayback(player, duration, setCountdownNum, () => { loopCountRef.current++; });
 
   // Keep screen awake while playing; restore auto-lock when paused or unmounted
   useEffect(() => {
@@ -312,6 +407,7 @@ export default function PlayerScreen() {
     if (!player) return;
     if (player.playing) {
       player.pause();
+      pauseCountRef.current++;
       playIconScale.setValue(0.7);
       playIconOpacity.setValue(0);
       setShowPlayIcon(true);
@@ -345,8 +441,29 @@ export default function PlayerScreen() {
       setCurrentVideoId(video.id);
       await saveVideoSettings(video.id);
     }
+    const { speed, isMirror, isCountdownEnabled } = usePlayerStore.getState();
+    Analytics.setupCompleted({
+      mirror: isMirror,
+      countdown: isCountdownEnabled,
+      speed,
+      time_on_setup: Math.round((Date.now() - setupShownAtRef.current) / 1000),
+    });
+    firePlaybackStarted();
     setSetupVisible(false);
   };
+
+  const handleBack = useCallback(() => {
+    fireSessionEnd('back');
+    recordSessionAndMaybePrompt();
+    router.back();
+  }, [fireSessionEnd]);
+
+  const handleSpeedChange = useCallback((from: PlaybackSpeed, to: PlaybackSpeed) => {
+    const timeIntoSession = sessionStartTimeRef.current
+      ? (Date.now() - sessionStartTimeRef.current) / 1000
+      : 0;
+    Analytics.speedChanged({ from, to, time_into_session: Math.round(timeIntoSession) });
+  }, []);
 
   const handleSmTap = useCallback(() => {
     if (showCoachMark) dismissCoachMark();
@@ -379,6 +496,8 @@ export default function PlayerScreen() {
       const isRight = locationX > w * 3 / 5;
       if (isLeft || isRight) {
         player?.seekBy(isLeft ? -5 : 5);
+        gestureSeekCountRef.current++;
+        Analytics.gestureSeek({ direction: isLeft ? 'backward' : 'forward' });
         seekIndicatorOpacity.setValue(0);
         setSeekFeedback(isLeft ? 'left' : 'right');
         Animated.sequence([
@@ -398,6 +517,10 @@ export default function PlayerScreen() {
   }, [player, seekIndicatorOpacity, handleVideoTap]);
 
   const handleSetupCancel = async () => {
+    Analytics.setupDismissed({
+      videos_in_library: parseInt(videosCount ?? '0', 10),
+      time_on_setup: Math.round((Date.now() - setupShownAtRef.current) / 1000),
+    });
     if (tempPath) {
       try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch {}
     }
@@ -410,7 +533,7 @@ export default function PlayerScreen() {
 
       {/* 自定义顶部栏 */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} activeOpacity={0.7} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
@@ -496,6 +619,8 @@ export default function PlayerScreen() {
           if (player && duration > 0) {
             player.seekBy(ratio * duration - (player.currentTime ?? 0));
           }
+          scrubCountRef.current++;
+          Analytics.progressBarScrubbed({ position: Math.round(ratio * 100) / 100 });
         }}
         onResponderTerminate={() => { smDragging.current = false; }}
         onResponderTerminationRequest={() => false}
@@ -506,7 +631,7 @@ export default function PlayerScreen() {
         </View>
       </View>
 
-      <PlayerControls />
+      <PlayerControls onSpeedChange={handleSpeedChange} />
       </View>
 
       <SetupSheet
@@ -630,6 +755,8 @@ export default function PlayerScreen() {
                 const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / fsBarWidthRef.current));
                 fsDragging.current = false;
                 handleFsSeek(ratio);
+                scrubCountRef.current++;
+                Analytics.progressBarScrubbed({ position: Math.round(ratio * 100) / 100 });
               }}
               onResponderTerminate={() => { fsDragging.current = false; }}
               onResponderTerminationRequest={() => false}

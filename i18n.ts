@@ -22,19 +22,27 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+// Resolves once the async language detection is complete.
+let _resolveLangReady: () => void = () => {};
+export const langReadyPromise = new Promise<void>((resolve) => {
+  _resolveLangReady = resolve;
+});
+
 // Async detection: AsyncStorage → expo-localization → fallback 'en'
 (async () => {
   try {
     const stored = await AsyncStorage.getItem(LANG_KEY);
     if (stored === 'zh' || stored === 'en') {
-      i18n.changeLanguage(stored);
+      await i18n.changeLanguage(stored);
+      _resolveLangReady();
       return;
     }
     const code = Localization.getLocales()[0]?.languageCode ?? '';
-    i18n.changeLanguage(code.startsWith('zh') ? 'zh' : 'en');
+    await i18n.changeLanguage(code.startsWith('zh') ? 'zh' : 'en');
   } catch {
     // keep default 'en'
   }
+  _resolveLangReady();
 })();
 
 /** Switch language and persist the choice. */
